@@ -1,8 +1,8 @@
-# 💰 FinanceHub
+# FinanceHub
 
 Plataforma de gestão financeira pessoal desenvolvida para controle intuitivo de entradas, saídas, reservas e lançamentos por categoria.
 
-## 🚀 Tecnologias
+## Tecnologias
 
 ### Frontend
 
