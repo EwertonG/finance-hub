@@ -6,6 +6,7 @@ import { swaggerDocument } from './config/swagger.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { categoryRoutes } from './routes/category.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
+import { debtorRoutes } from './routes/debtor.routes.js';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/transactions', transactionRoutes);
+app.use('/debtors', debtorRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
