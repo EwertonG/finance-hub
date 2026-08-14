@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { authRoutes } from './routes/auth.routes.js';
 
 dotenv.config();
 
@@ -11,9 +12,11 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/health', (req, res) => {
-  return res.json({ status: 'ok', message: 'FinanceHub API is running!' });
+  return res.json({ status: 'ok', message: 'API está rodando!' });
 });
 
+app.use('/auth', authRoutes);
+
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
