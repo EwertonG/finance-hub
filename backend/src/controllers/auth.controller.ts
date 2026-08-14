@@ -86,3 +86,32 @@ export async function login(req: Request, res: Response) {
     return res.status(500).json({ error: 'Erro interno ao realizar login.' });
   }
 }
+
+export async function me(req: Request, res: Response) {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Não autorizado.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    return res.json({ user });
+  } catch (error) {
+    console.error('Erro ao buscar perfil:', error);
+    return res.status(500).json({ error: 'Erro interno no servidor.' });
+  }
+}
