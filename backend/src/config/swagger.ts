@@ -30,7 +30,7 @@ export const swaggerDocument = {
       },
     },
 
-    // ================= AUTENTICAÇÃO =================
+    // Auth
     '/auth/register': {
       post: {
         tags: ['Autenticação'],
@@ -85,7 +85,7 @@ export const swaggerDocument = {
       },
     },
 
-    // ================= CATEGORIAS =================
+    // Categorias
     '/categories': {
       post: {
         tags: ['Categorias'],
@@ -133,7 +133,7 @@ export const swaggerDocument = {
       },
     },
 
-    // ================= TRANSAÇÕES =================
+    // Transações
     '/transactions': {
       post: {
         tags: ['Transações'],
@@ -196,7 +196,7 @@ export const swaggerDocument = {
       },
     },
 
-    // ================= DEVEDORES / COBRANÇAS =================
+    // Devedores
     '/debtors': {
       post: {
         tags: ['Devedores & Divisão'],
