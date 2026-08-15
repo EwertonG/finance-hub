@@ -1,28 +1,27 @@
 import { createTheme } from '@mui/material/styles';
 
-export const darkTheme = createTheme({
+export const lightTheme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     primary: {
-      main: '#10B981',
+      main: '#047857', 
+      dark: '#064E3B', 
+      light: '#10B981',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#6366F1',
+      main: '#0F172A', 
     },
     background: {
-      default: '#0F172A',
-      paper: '#1E293B',
+      default: '#F1F5F9', 
+      paper: '#FFFFFF',  
     },
     text: {
-      primary: '#F8FAFC',
-      secondary: '#94A3B8',
+      primary: '#1E293B',
+      secondary: '#64748B',
     },
     error: {
-      main: '#EF4444',
-    },
-    success: {
-      main: '#10B981',
+      main: '#DC2626',
     },
   },
   typography: {
@@ -33,6 +32,6 @@ export const darkTheme = createTheme({
     },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 10,
   },
 });
