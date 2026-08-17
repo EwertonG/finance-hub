@@ -19,6 +19,7 @@ import { api } from '../../services/api';
 import { AuthSidePanel } from './components/AuthSidePanel';
 import logoImg from '../../assets/logo.png';
 
+
 export const Register: React.FC = () => {
   const navigate = useNavigate();
 
@@ -76,15 +77,15 @@ export const Register: React.FC = () => {
             justifyContent: 'center',
           }}
         >
-          {/* Logo como Imagem */}
-          <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+          {/* Logo */}
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
             <Box
               component="img"
               src={logoImg}
               alt="FinanceHUB Logo"
               sx={{
-                height: 48,
-                maxWidth: 200,
+                height: 80,
+                width: 'auto',
                 objectFit: 'contain',
               }}
             />
