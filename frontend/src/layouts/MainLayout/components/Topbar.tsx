@@ -1,111 +1,58 @@
-import React, { useState } from 'react';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Box,
-  Avatar,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-} from '@mui/material';
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
-import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import { useAuth } from '../../../contexts/AuthContext';
+import React from 'react';
+import { Box, Typography, useTheme } from '@mui/material';
+import { useLocation } from 'react-router-dom';
+
+const pageHeaders: Record<string, { title: string; description: string }> = {
+  '/': {
+    title: 'Dashboard',
+    description: 'Visão geral das suas finanças e saldos em tempo real.',
+  },
+  '/transactions': {
+    title: 'Lançamentos',
+    description: 'Gerencie suas receitas, despesas e transferências.',
+  },
+  '/categories': {
+    title: 'Categorias',
+    description: 'Organize e personalize a classificação dos seus gastos.',
+  },
+  '/debtors': {
+    title: 'Caderno de Devedores',
+    description: 'Acompanhe divisões de contas e pendências com amigos.',
+  },
+};
 
 export const Topbar: React.FC = () => {
-  const { user, signOut } = useAuth(); 
-  
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const location = useLocation();
+  const theme = useTheme();
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+  const currentHeader = pageHeaders[location.pathname] || {
+    title: 'FinanceHub',
+    description: 'Plataforma de gestão financeira.',
   };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    handleMenuClose();
-    signOut();
-  };
-
-  const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <AppBar
-      position="sticky"
+    <Box
       sx={{
-        bgcolor: 'background.paper',
-        color: 'text.primary',
-        boxShadow: 'none',
-        borderBottom: 1,
-        borderColor: 'divider',
+        px: { xs: 2, md: 5 },
+        py: 2,
+        bgcolor: 'background.default',
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between', minHeight: '80px' }}>
-        
-        {/* Lado Esquerdo: Ícone de Menu e Saudação */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {/* Botão de menu hambúrguer, visível apenas em telas pequenas */}
-          <IconButton
-            color="inherit"
-            edge="start"
-            sx={{ mr: 2, display: { md: 'none' } }}
-          >
-            <MenuRoundedIcon />
-          </IconButton>
-          
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Olá, {user?.name ? user.name.split(' ')[0] : 'Usuário'} 👋
-          </Typography>
-        </Box>
+      <Box>
+        <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
+          {currentHeader.title}
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          {currentHeader.description}
+        </Typography>
+      </Box>
 
-        {/* Lado Direito: Avatar e Menu de Perfil */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <IconButton onClick={handleMenuOpen} sx={{ p: 0.5 }}>
-            <Avatar 
-              sx={{ 
-                bgcolor: 'primary.main', 
-                color: 'primary.contrastText',
-                width: 42,
-                height: 42,
-                fontWeight: 'bold'
-              }}
-            >
-              {initial}
-            </Avatar>
-          </IconButton>
-
-          {/* Menu Dropdown que abre ao clicar no Avatar */}
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleMenuClose}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-            slotProps={{
-              paper: {
-                sx: {
-                  mt: 1,
-                  minWidth: 180,
-                  borderRadius: 2,
-                  boxShadow: '0px 10px 15px -3px rgba(0,0,0,0.1)',
-                }
-              }
-            }}
-          >
-            <MenuItem onClick={handleLogout} sx={{ color: 'error.main', py: 1.5 }}>
-              <ListItemIcon>
-                <LogoutRoundedIcon fontSize="small" color="error" />
-              </ListItemIcon>
-              Sair da conta
-            </MenuItem>
-          </Menu>
-        </Box>
-      </Toolbar>
-    </AppBar>
+      <Box>
+      </Box>
+    </Box>
   );
 };
