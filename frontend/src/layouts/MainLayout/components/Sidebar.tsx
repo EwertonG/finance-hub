@@ -15,7 +15,7 @@ import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import logoImg from '../../../../assets/logo.png'; 
+import logoImg from '../../../assets/logo.png'; 
 
 const DRAWER_WIDTH = 280;
 
