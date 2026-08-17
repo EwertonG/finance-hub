@@ -50,7 +50,6 @@ export const Sidebar: React.FC = () => {
     signOut();
   };
 
-  const firstName = user?.name ? user.name.split(' ')[0] : 'Usuário';
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   const menuItems = [
@@ -77,22 +76,24 @@ export const Sidebar: React.FC = () => {
       }}
     >
       {/* TOPO: Logo e Saudação */}
-      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-        <Box 
-          component="img" 
-          src={logoImg} 
-          alt="FinanceHub Logo" 
-          sx={{ height: 48, objectFit: 'contain', mb: 2 }} 
+      <Box
+        sx={{
+          height: 89,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          px: 3,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          boxSizing: 'border-box',
+        }}
+      >
+        <Box
+          component="img"
+          src={logoImg}
+          alt="FinanceHub Logo"
+          sx={{ height: 38, objectFit: 'contain' }}
         />
-        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-          Bem-vindo(a) de volta,
-        </Typography>
-        <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: -0.5 }}>
-          {firstName}!
-        </Typography>
       </Box>
-
-      <Divider sx={{ mx: 3, mb: 2, opacity: 0.6 }} />
 
       {/* MEIO: Lista de Navegação */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
