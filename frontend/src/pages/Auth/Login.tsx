@@ -78,15 +78,15 @@ export const Login: React.FC = () => {
             justifyContent: 'center',
           }}
         >
-          {/* Logo como Imagem */}
-          <Box sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
+          {/* Logo */}
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
             <Box
               component="img"
               src={logoImg}
               alt="FinanceHUB Logo"
               sx={{
-                height: 48,
-                maxWidth: 200,
+                height: 80,
+                width: 'auto',
                 objectFit: 'contain',
               }}
             />
@@ -190,7 +190,7 @@ export const Login: React.FC = () => {
                 fontSize: '0.95rem',
               }}
             >
-              Cadastrar nova conta
+              Cadastre-se
             </Button>
           </Box>
         </Box>
