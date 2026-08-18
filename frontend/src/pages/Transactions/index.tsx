@@ -19,6 +19,8 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
+import { TransactionModal } from './components/TransactionModal';
+import type { NewTransactionData } from './components/TransactionModal';
 
 interface Transaction {
   id: string;
@@ -59,7 +61,9 @@ const initialTransactions: Transaction[] = [
 
 export const Transactions: React.FC = () => {
   const theme = useTheme();
-  const [transactions] = useState<Transaction[]>(initialTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);    
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -73,6 +77,18 @@ export const Transactions: React.FC = () => {
     return `${day}/${month}/${year}`;
   };
 
+  const handleAddTransaction = (data: NewTransactionData) => {
+    const newTx: Transaction = {
+      id: String(Date.now()),
+      ...data,
+    };
+    setTransactions((prev) => [newTx, ...prev]);
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Barra de Ações Superior */}
@@ -80,6 +96,7 @@ export const Transactions: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}
+          onClick={() => setIsModalOpen(true)}
           sx={{
             borderRadius: 2,
             px: 2.5,
@@ -179,7 +196,11 @@ export const Transactions: React.FC = () => {
                       </TableCell>
 
                       <TableCell align="right">
-                        <IconButton size="small" color="default">
+                        <IconButton 
+                            size="small" 
+                            color="default"
+                            onClick={() => handleDeleteTransaction(tx.id)}
+                            >
                           <DeleteOutlineRoundedIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
@@ -191,6 +212,11 @@ export const Transactions: React.FC = () => {
           </TableContainer>
         </CardContent>
       </Card>
+      <TransactionModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddTransaction}
+      />
     </Box>
   );
 };
