@@ -95,6 +95,8 @@ export const Sidebar: React.FC = () => {
         />
       </Box>
 
+      <Divider sx={{ mx: 3, mb: 2, opacity: 0.6 }} />
+
       {/* MEIO: Lista de Navegação */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
         <List sx={{ px: 2 }}>
