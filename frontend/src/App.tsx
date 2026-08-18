@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './pages/Auth/Login';
 import { Register } from './pages/Auth/Register';
 import { MainLayout } from './layouts/MainLayout/index';
+import { Transactions } from './pages/Transactions';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -36,7 +37,7 @@ export function App() {
               }
             >
               <Route index element={<h2>Dashboard</h2>} />
-              <Route path="transactions" element={<h2>Extrato e Lançamentos</h2>} />
+              <Route path="transactions" element={<Transactions/>} />
               <Route path="categories" element={<h2>Categorias</h2>} />
               <Route path="debtors" element={<h2>Caderno de Devedores</h2>} />
             </Route>  
