@@ -4,7 +4,9 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { lightTheme } from './theme/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './pages/Auth/Login';
-import { Register } from './pages/Auth/Register' 
+import { Register } from './pages/Auth/Register';
+import { MainLayout } from './layouts/MainLayout/index';
+import { Transactions } from './pages/Transactions';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -30,13 +32,15 @@ export function App() {
               path="/"
               element={
                 <PrivateRoute>
-                  <div style={{ padding: 40, fontFamily: 'sans-serif' }}>
-                    <h1>Bem-vindo ao FinanceHub!</h1>
-                    <p>Dashboard em desenvolvimento...</p>
-                  </div>
+                  <MainLayout />
                 </PrivateRoute>
               }
-            />
+            >
+              <Route index element={<h2>Dashboard</h2>} />
+              <Route path="transactions" element={<Transactions/>} />
+              <Route path="categories" element={<h2>Categorias</h2>} />
+              <Route path="debtors" element={<h2>Caderno de Devedores</h2>} />
+            </Route>  
 
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
