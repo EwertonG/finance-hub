@@ -59,7 +59,7 @@ export const Transactions: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     const datePart = dateString.split('T')[0];
-    const [year, month, day] = dateString.split('-');
+    const [year, month, day] = datePart.split('-');
     return `${day}/${month}/${year}`;
   };
 
