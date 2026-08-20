@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -21,49 +21,34 @@ import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { TransactionModal } from './components/TransactionModal';
 import type { NewTransactionData } from './components/TransactionModal';
+import { api } from '../../services/api';
 
 interface Transaction {
   id: string;
   description: string;
   amount: number;
   type: 'INCOME' | 'EXPENSE';
-  category: string;
+  category: {name: string} | null;
   date: string;
 }
 
-// Dados temporários
-const initialTransactions: Transaction[] = [
-  {
-    id: '1',
-    description: 'Salário Mensal',
-    amount: 5500.0,
-    type: 'INCOME',
-    category: 'Trabalho',
-    date: '2026-08-05',
-  },
-  {
-    id: '2',
-    description: 'Supermercado',
-    amount: 642.5,
-    type: 'EXPENSE',
-    category: 'Alimentação',
-    date: '2026-08-10',
-  },
-  {
-    id: '3',
-    description: 'Internet Fibra',
-    amount: 129.9,
-    type: 'EXPENSE',
-    category: 'Contas',
-    date: '2026-08-12',
-  },
-];
-
 export const Transactions: React.FC = () => {
   const theme = useTheme();
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);    
+
+  useEffect(() => {
+    loadTransactions();
+  }, []);
+
+  const loadTransactions = async () => {
+    try {
+      const response = await api.get('/transactions');
+      setTransactions(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar lançamentos:', error);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -73,20 +58,27 @@ export const Transactions: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('-');
+    const datePart = dateString.split('T')[0];
+    const [year, month, day] = datePart.split('-');
     return `${day}/${month}/${year}`;
   };
 
-  const handleAddTransaction = (data: NewTransactionData) => {
-    const newTx: Transaction = {
-      id: String(Date.now()),
-      ...data,
-    };
-    setTransactions((prev) => [newTx, ...prev]);
+  const handleAddTransaction = async (data: NewTransactionData) => {
+    try {
+      const response = await api.post('/transactions', data);
+      setTransactions((prev) => [response.data, ...prev]);
+    } catch (error) {
+      console.error ('Erro ao criar lançamento:', error);
+    }
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+  const handleDeleteTransaction = async (id: string) => {
+    try {
+      await api.delete(`/transactions/${id}`);
+      setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+    } catch (error) {
+      console.error ('Erro ao deletar lançamento:', error);
+    }
   };
 
   return (
@@ -166,7 +158,7 @@ export const Transactions: React.FC = () => {
 
                       <TableCell>
                         <Chip
-                          label={tx.category}
+                          label={tx.category?.name || 'Sem categoria'} 
                           size="small"
                           sx={{
                             borderRadius: 1.5,
