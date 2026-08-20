@@ -28,7 +28,7 @@ interface Transaction {
   description: string;
   amount: number;
   type: 'INCOME' | 'EXPENSE';
-  category: string;
+  category: {name: string} | null;
   date: string;
 }
 
@@ -58,6 +58,7 @@ export const Transactions: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
+    const datePart = dateString.split('T')[0];
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
   };
@@ -157,7 +158,7 @@ export const Transactions: React.FC = () => {
 
                       <TableCell>
                         <Chip
-                          label={tx.category}
+                          label={tx.category?.name || 'Sem categoria'} 
                           size="small"
                           sx={{
                             borderRadius: 1.5,

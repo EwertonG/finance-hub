@@ -20,7 +20,7 @@ export interface NewTransactionData {
   description: string;
   amount: number;
   type: 'INCOME' | 'EXPENSE';
-  category: string;
+  categoryId: string;
   date: string;
 }
 
@@ -60,7 +60,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       setCategories(response.data);
 
       if (response.data.length > 0 && !category) {
-        setCategory(response.data[0].name);
+        setCategory(response.data[0].id);
       }
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
@@ -86,7 +86,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       description,
       amount: parseFloat(amount),
       type,
-      category,
+      categoryId: category,
       date,
     });
 
@@ -170,7 +170,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
             }}
           >
             {categories.map((cat) => (
-              <MenuItem key={cat.id} value={cat.name}>
+              <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
               </MenuItem>
             ))}
