@@ -26,26 +26,16 @@ export const Dashboard: React.FC = () => {
 
   const loadSummary = async () => {
     try {
-      const response = await api.get('/transactions');
-      const transactions: Transaction[] = response.data;
-
-      const calculatedSummary = transactions.reduce(
-        (acc, curr) => {
-          if (curr.type === 'INCOME') {
-            acc.income += curr.amount;
-            acc.total += curr.amount;
-          } else {
-            acc.expense += curr.amount;
-            acc.total -= curr.amount;
-          }
-          return acc;
-        },
-        { income: 0, expense: 0, total: 0 }
-      );
-
-      setSummary(calculatedSummary);
+      const response = await api.get('/transactions/summary');
+      const {totalIncome, totalExpense, balance} = response.data;
+    
+      setSummary({
+        income: totalIncome,
+        expense: totalExpense,
+        total: balance,
+      });
     } catch (error) {
-      console.error('Erro ao buscar dados do dashboard:', error);
+        console.error ('Erro ao buscar dados do dashboard', error);
     }
   };
 
