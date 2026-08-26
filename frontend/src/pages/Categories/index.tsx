@@ -26,6 +26,8 @@ import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
 
 import { api } from '../../services/api';
 
+import { CategoryModal } from './components/CategoryModal';
+
 interface Category {
   id: string;
   name: string;
@@ -111,6 +113,8 @@ export const Categories = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const loadCategories = async () => {
     try {
       setIsLoading(true);
@@ -130,6 +134,18 @@ export const Categories = () => {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleCategoryCreated = () => {
+    loadCategories();
+  };
 
   if (isLoading) {
     return (
@@ -214,6 +230,7 @@ export const Categories = () => {
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}
+          onClick={handleOpenModal}
           sx={{
             borderRadius: 2,
             px: 2.5,
@@ -340,6 +357,12 @@ export const Categories = () => {
           })}
         </CardContent>
       </Card>
+
+      <CategoryModal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        onCreated={handleCategoryCreated}
+      />
     </Box>
   );
 };
