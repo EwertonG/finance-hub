@@ -3,6 +3,9 @@ import { Box, Card, CardContent, Typography, useTheme, Grid, CircularProgress  }
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import HourglassEmptyRoundedIcon from '@mui/icons-material/HourglassEmptyRounded';
+import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import { api } from '../../services/api';
 
 interface Summary {
@@ -77,80 +80,148 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
-        Visão Geral
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <Box>
+        <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
+          Visão Geral
         </Typography>
         {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
             <CircularProgress />
-        </Box>
+          </Box>
         ) : summary.income === 0 && summary.expense === 0 ? (
-        <Box sx={{ py: 6, textAlign: 'center' }}>
+          <Box sx={{ py: 3, textAlign: 'center', border: `1px dashed ${theme.palette.divider}`, borderRadius: 3 }}>
             <Typography variant="body2" color="text.secondary">
-            Nenhum lançamento encontrado ainda. Cadastre sua primeira transação para ver o resumo aqui.
+              Nenhum lançamento financeiro encontrado ainda.
             </Typography>
-        </Box>
+          </Box>
         ) : (
-        <Grid container spacing={3}>
+          <Grid container spacing={3}>
             {/* Card de Receitas */}
-            <Grid size={{ xs:12, md:4}} >
-            <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+            <Grid size={{ xs: 12, md: 4 }} >
+              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.light', color: 'success.dark', display: 'flex' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.light', color: 'success.dark', display: 'flex' }}>
                     <TrendingUpRoundedIcon />
-                </Box>
-                <Box>
+                  </Box>
+                  <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    Receitas
+                      Receitas
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
-                    {formatCurrency(summary.income)}
+                      {formatCurrency(summary.income)}
                     </Typography>
-                </Box>
+                  </Box>
                 </CardContent>
-            </Card>
+              </Card>
             </Grid>
 
             {/* Card de Despesas */}
-            <Grid size={{xs:12, md:4}} >
-            <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+            <Grid size={{ xs: 12, md: 4 }} >
+              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.light', color: 'error.dark', display: 'flex' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.light', color: 'error.dark', display: 'flex' }}>
                     <TrendingDownRoundedIcon />
-                </Box>
-                <Box>
+                  </Box>
+                  <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    Despesas
+                      Despesas
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: 'error.main' }}>
-                    {formatCurrency(summary.expense)}
+                      {formatCurrency(summary.expense)}
                     </Typography>
-                </Box>
+                  </Box>
                 </CardContent>
-            </Card>
+              </Card>
             </Grid>
 
             {/* Card de Saldo */}
-            <Grid size = {{xs:12, md:4}} >
-            <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+            <Grid size={{ xs: 12, md: 4 }} >
+              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.dark', display: 'flex' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.dark', display: 'flex' }}>
                     <AccountBalanceWalletRoundedIcon />
-                </Box>
-                <Box>
+                  </Box>
+                  <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    Saldo Total
+                      Saldo Total
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                    {formatCurrency(summary.total)}
+                      {formatCurrency(summary.total)}
                     </Typography>
-                </Box>
+                  </Box>
                 </CardContent>
-            </Card>
+              </Card>
             </Grid>
-        </Grid>
-    )}
+          </Grid>
+        )}
+      </Box>
+
+      {!loading && (
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
+            Cobranças (Devedores)
+          </Typography>
+          <Grid container spacing={3}>
+            {/* Card: A Receber */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.light', color: 'warning.dark', display: 'flex' }}>
+                    <HourglassEmptyRoundedIcon />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      A Receber (Pendente)
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'warning.main' }}>
+                      {formatCurrency(debtorsSummary.totalToReceive)}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Card: Total Pago */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.light', color: 'success.dark', display: 'flex' }}>
+                    <CheckCircleOutlineRoundedIcon />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Total Recebido (Pago)
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
+                      {formatCurrency(debtorsSummary.totalPaid)}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Card: Total Geral */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'info.light', color: 'info.dark', display: 'flex' }}>
+                    <PeopleAltRoundedIcon />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Total Dividido
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                      {formatCurrency(debtorsSummary.totalOverall)}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+      )}
     </Box>
   );
 };
