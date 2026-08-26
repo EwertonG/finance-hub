@@ -1,58 +1,186 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   IconButton,
   Typography,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
+
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
+
 import RestaurantRoundedIcon from '@mui/icons-material/RestaurantRounded';
-import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded';
+import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded';
+import DirectionsBusRoundedIcon from '@mui/icons-material/DirectionsBusRounded';
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import SportsEsportsRoundedIcon from '@mui/icons-material/SportsEsportsRounded';
+import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded';
+import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
+import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
+
+import { api } from '../../services/api';
 
 interface Category {
   id: string;
   name: string;
-  description: string;
+  color: string;
   type: 'INCOME' | 'EXPENSE';
-  icon: React.ReactNode;
+  createdAt: string;
 }
 
-const categories: Category[] = [
-  {
-    id: '1',
-    name: 'Alimentação',
-    description: 'Gastos com alimentação',
-    type: 'EXPENSE',
-    icon: <RestaurantRoundedIcon />,
-  },
-  {
-    id: '2',
-    name: 'Salário',
-    description: 'Entradas de trabalho',
-    type: 'INCOME',
-    icon: <AccountBalanceRoundedIcon />,
-  },
-  {
-    id: '3',
-    name: 'Lazer',
-    description: 'Entretenimento e diversão',
-    type: 'EXPENSE',
-    icon: <SportsEsportsRoundedIcon />,
-  },
-];
+const getCategoryIcon = (categoryName: string) => {
+  const normalizedName = categoryName
+    .trim()
+    .toLowerCase();
 
-export const Categories: React.FC = () => {
+  if (
+    normalizedName.includes('aliment') ||
+    normalizedName.includes('comida') ||
+    normalizedName.includes('restaurante')
+  ) {
+    return <RestaurantRoundedIcon />;
+  }
+
+  if (
+    normalizedName.includes('supermercado') ||
+    normalizedName.includes('mercado') ||
+    normalizedName.includes('compras')
+  ) {
+    return <ShoppingCartRoundedIcon />;
+  }
+
+  if (
+    normalizedName.includes('transporte') ||
+    normalizedName.includes('combustível') ||
+    normalizedName.includes('combustivel') ||
+    normalizedName.includes('ônibus') ||
+    normalizedName.includes('onibus') ||
+    normalizedName.includes('uber')
+  ) {
+    return <DirectionsBusRoundedIcon />;
+  }
+
+  if (
+    normalizedName.includes('moradia') ||
+    normalizedName.includes('casa') ||
+    normalizedName.includes('aluguel')
+  ) {
+    return <HomeRoundedIcon />;
+  }
+
+  if (
+    normalizedName.includes('lazer') ||
+    normalizedName.includes('jogo') ||
+    normalizedName.includes('jogos') ||
+    normalizedName.includes('entretenimento')
+  ) {
+    return <SportsEsportsRoundedIcon />;
+  }
+
+  if (
+    normalizedName.includes('salário') ||
+    normalizedName.includes('salario') ||
+    normalizedName.includes('trabalho') ||
+    normalizedName.includes('emprego')
+  ) {
+    return <BusinessCenterRoundedIcon />;
+  }
+
+  if (
+    normalizedName.includes('investimento') ||
+    normalizedName.includes('investimentos') ||
+    normalizedName.includes('poupança') ||
+    normalizedName.includes('poupanca')
+  ) {
+    return <SavingsRoundedIcon />;
+  }
+
+  return <MoreHorizRoundedIcon />;
+};
+
+export const Categories = () => {
   const theme = useTheme();
 
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadCategories = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+
+      const response = await api.get<Category[]>('/categories');
+
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar categorias:', error);
+      setError('Não foi possível carregar suas categorias.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: 240,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 240,
+          gap: 2,
+        }}
+      >
+        <Typography color="error">
+          {error}
+        </Typography>
+
+        <Button
+          variant="outlined"
+          onClick={loadCategories}
+        >
+          Tentar novamente
+        </Button>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Cabeçalho */}
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3,
+      }}
+    >
+
       <Box
         sx={{
           display: 'flex',
@@ -97,7 +225,6 @@ export const Categories: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Lista de categorias */}
       <Card
         sx={{
           borderRadius: 3,
@@ -109,6 +236,7 @@ export const Categories: React.FC = () => {
         <CardContent
           sx={{
             p: 0,
+
             '&:last-child': {
               pb: 0,
             },
@@ -124,37 +252,52 @@ export const Categories: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 2,
+
                   px: 3,
                   py: 2,
+
                   borderBottom:
                     index !== categories.length - 1
                       ? `1px solid ${theme.palette.divider}`
                       : 'none',
+
                   '&:hover': {
                     bgcolor: 'action.hover',
                   },
+
                   transition: 'background-color 0.2s',
                 }}
               >
-                {/* Ícone */}
+
                 <Box
                   sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 2,
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2.5,
+
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: isIncome ? 'success.light' : 'error.light',
-                    color: isIncome ? 'success.dark' : 'error.dark',
+                    bgcolor: alpha(category.color, 0.12),
+
+                    color: category.color,
+
                     flexShrink: 0,
+
+                    '& svg': {
+                      fontSize: 25,
+                    },
                   }}
                 >
-                  {category.icon}
+                  {getCategoryIcon(category.name)}
                 </Box>
 
-                {/* Informações */}
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Box
+                  sx={{
+                    flexGrow: 1,
+                    minWidth: 0,
+                  }}
+                >
                   <Typography
                     variant="body1"
                     sx={{
@@ -164,31 +307,26 @@ export const Categories: React.FC = () => {
                   >
                     {category.name}
                   </Typography>
-
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: 'text.secondary',
-                      mt: 0.25,
-                    }}
-                  >
-                    {category.description}
-                  </Typography>
                 </Box>
 
-                {/* Tipo */}
                 <Chip
                   label={isIncome ? 'Receita' : 'Despesa'}
                   size="small"
                   sx={{
                     borderRadius: 1.5,
-                    bgcolor: isIncome ? 'success.light' : 'error.light',
-                    color: isIncome ? 'success.dark' : 'error.dark',
+
+                    bgcolor: isIncome
+                      ? 'success.light'
+                      : 'error.light',
+
+                    color: isIncome
+                      ? 'success.dark'
+                      : 'error.dark',
+
                     fontWeight: 600,
                   }}
                 />
 
-                {/* Ações */}
                 <IconButton
                   size="small"
                   sx={{
