@@ -185,15 +185,6 @@ export const Categories = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* CABEÇALHO */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
-            Categorias
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-            Organize suas categorias para facilitar seus lançamentos.
-          </Typography>
-        </Box>
-
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}

@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Chip,
   IconButton,
   Table,
@@ -37,16 +38,17 @@ export const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);    
 
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadTransactions = async () => {
     try {
+      setIsLoading(true);
       const response = await api.get('/transactions');
       setTransactions(response.data);
     } catch (error) {
       console.error('Erro ao buscar lançamentos:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -81,6 +83,24 @@ export const Transactions: React.FC = () => {
     }
   };
 
+    useEffect(() => {
+    loadTransactions();
+  }, []);
+
+if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: 240,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Barra de Ações Superior */}
