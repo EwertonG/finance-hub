@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, useTheme, Grid, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
+import { Box, Card, CardContent, Typography, useTheme, Grid, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, LinearProgress } from '@mui/material';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
@@ -86,6 +86,22 @@ export const Dashboard: React.FC = () => {
     const [year, month, day] = datePart.split('-');
     return `${day}/${month}/${year}`;
   };
+
+  // Calcular distribuição de gastos por categoria
+  const expenses = recentTransactions.filter(tx => tx.type === 'EXPENSE');
+  const totalExpenses = expenses.reduce((sum, tx) => sum + Number(tx.amount), 0);
+
+  const categoryMap: { [name: string]: number } = {};
+  expenses.forEach(tx => {
+    const catName = tx.category?.name || 'Sem categoria';
+    categoryMap[catName] = (categoryMap[catName] || 0) + Number(tx.amount);
+  });
+
+  const categoryBreakdown = Object.entries(categoryMap).map(([name, amount]) => ({
+    name,
+    amount,
+    percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+  })).sort((a, b) => b.amount - a.amount);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -231,92 +247,139 @@ export const Dashboard: React.FC = () => {
             </Grid>
           </Box>
 
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
-              Últimos Lançamentos
-            </Typography>
-            {recentTransactions.length === 0 ? (
-              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 4, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Nenhum lançamento registrado.
-                </Typography>
-              </Card>
-            ) : (
-              <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
-                <TableContainer>
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'action.hover' }}>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Descrição</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Categoria</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Data</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Valor</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {recentTransactions.slice(0, 5).map((tx) => {
-                        const isIncome = tx.type === 'INCOME';
-                        return (
-                          <TableRow key={tx.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Box
+          <Grid container spacing={3}>
+            {/* Últimos Lançamentos */}
+            <Grid size={{ xs: 12, md: 7 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
+                Últimos Lançamentos
+              </Typography>
+              {recentTransactions.length === 0 ? (
+                <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 4, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Nenhum lançamento registrado.
+                  </Typography>
+                </Card>
+              ) : (
+                <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
+                  <TableContainer>
+                    <Table>
+                      <TableHead sx={{ bgcolor: 'action.hover' }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Descrição</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Categoria</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Data</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Valor</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {recentTransactions.slice(0, 5).map((tx) => {
+                          const isIncome = tx.type === 'INCOME';
+                          return (
+                            <TableRow key={tx.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                  <Box
+                                    sx={{
+                                      width: 32,
+                                      height: 32,
+                                      borderRadius: '50%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      bgcolor: isIncome ? 'success.light' : 'error.light',
+                                      color: isIncome ? 'success.dark' : 'error.dark',
+                                      opacity: 0.9,
+                                    }}
+                                  >
+                                    {isIncome ? <ArrowUpwardRoundedIcon fontSize="small" /> : <ArrowDownwardRoundedIcon fontSize="small" />}
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                    {tx.description}
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={tx.category?.name || 'Sem categoria'}
+                                  size="small"
                                   sx={{
-                                    width: 32,
-                                    height: 32,
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    bgcolor: isIncome ? 'success.light' : 'error.light',
-                                    color: isIncome ? 'success.dark' : 'error.dark',
-                                    opacity: 0.9,
+                                    borderRadius: 1.5,
+                                    bgcolor: 'action.hover',
+                                    color: 'text.primary',
+                                    fontWeight: 500,
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" color="text.secondary">
+                                  {formatDate(tx.date)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 600,
+                                    color: isIncome ? 'success.main' : 'error.main',
                                   }}
                                 >
-                                  {isIncome ? <ArrowUpwardRoundedIcon fontSize="small" /> : <ArrowDownwardRoundedIcon fontSize="small" />}
-                                </Box>
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  {tx.description}
+                                  {isIncome ? `+ ${formatCurrency(tx.amount)}` : `- ${formatCurrency(tx.amount)}`}
                                 </Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={tx.category?.name || 'Sem categoria'}
-                                size="small"
-                                sx={{
-                                  borderRadius: 1.5,
-                                  bgcolor: 'action.hover',
-                                  color: 'text.primary',
-                                  fontWeight: 500,
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2" color="text.secondary">
-                                {formatDate(tx.date)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: isIncome ? 'success.main' : 'error.main',
-                                }}
-                              >
-                                {isIncome ? `+ ${formatCurrency(tx.amount)}` : `- ${formatCurrency(tx.amount)}`}
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Card>
-            )}
-          </Box>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Card>
+              )}
+            </Grid>
+
+            {/* Gastos por Categoria */}
+            <Grid size={{ xs: 12, md: 5 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
+                Gastos por Categoria
+              </Typography>
+              {categoryBreakdown.length === 0 ? (
+                <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 4, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Nenhuma despesa categorizada encontrada.
+                  </Typography>
+                </Card>
+              ) : (
+                <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 3 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                    {categoryBreakdown.map((item) => (
+                      <Box key={item.name}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                            {item.name}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                            {formatCurrency(item.amount)} ({item.percentage.toFixed(0)}%)
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={item.percentage}
+                          sx={{
+                            height: 8,
+                            borderRadius: 4,
+                            bgcolor: 'action.hover',
+                            '& .MuiLinearProgress-bar': {
+                              borderRadius: 4,
+                              bgcolor: 'primary.main',
+                            },
+                          }}
+                        />
+                      </Box>
+                    ))}
+                  </Box>
+                </Card>
+              )}
+            </Grid>
+          </Grid>
         </>
       )}
     </Box>
