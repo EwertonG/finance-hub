@@ -11,29 +11,61 @@ interface Summary {
   total: number;
 }
 
+interface DebtorSummary {
+  totalPending: number;
+  totalCharged: number;
+  totalPaid: number;
+  totalToReceive: number;
+  totalOverall: number;
+}
+
+interface Transaction {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'INCOME' | 'EXPENSE';
+  category: { name: string } | null;
+  date: string;
+}
+
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
   const [summary, setSummary] = useState<Summary>({ income: 0, expense: 0, total: 0 });
+  const [debtorsSummary, setDebtorsSummary] = useState<DebtorSummary>({
+    totalPending: 0,
+    totalCharged: 0,
+    totalPaid: 0,
+    totalToReceive: 0,
+    totalOverall: 0,
+  });
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadSummary();
+    loadDashboardData();
   }, []);
 
-  const loadSummary = async () => {
+  const loadDashboardData = async () => {
     try {
-      const response = await api.get('/transactions/summary');
-      const {totalIncome, totalExpense, balance} = response.data;
-    
+      const [summaryRes, debtorsSummaryRes, transactionsRes] = await Promise.all([
+        api.get('/transactions/summary'),
+        api.get('/debtors/summary'),
+        api.get('/transactions'),
+      ]);
+
+      const { totalIncome, totalExpense, balance } = summaryRes.data;
       setSummary({
         income: totalIncome,
         expense: totalExpense,
         total: balance,
       });
+
+      setDebtorsSummary(debtorsSummaryRes.data);
+      setRecentTransactions(transactionsRes.data);
     } catch (error) {
-        console.error ('Erro ao buscar dados do dashboard', error);
+      console.error('Erro ao buscar dados do dashboard', error);
     } finally {
-        setLoading (false);
+      setLoading(false);
     }
   };
 
