@@ -16,10 +16,20 @@ import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 
 import { api } from '../../../services/api';
 
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  type: 'INCOME' | 'EXPENSE';
+  createdAt: string;
+}
+
 interface CategoryModalProps {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
+
+  category?: Category | null;
 }
 
 const CATEGORY_COLORS = {
@@ -31,6 +41,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   open,
   onClose,
   onCreated,
+  category,
 }) => {
   const [name, setName] = useState('');
 
@@ -41,12 +52,20 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (open) {
+    if (!open) {
+      return;
+    }
+
+    if (category) {
+      setName(category.name);
+      setType(category.type);
+    } else {
       setName('');
       setType('EXPENSE');
-      setIsSubmitting(false);
     }
-  }, [open]);
+
+    setIsSubmitting(false);
+  }, [open, category]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -60,17 +79,28 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
       const color = CATEGORY_COLORS[type];
 
-      await api.post('/categories', {
+      const data = {
         name: name.trim(),
         color,
         type,
-      });
+      };
+
+      if (category) {
+        await api.put(`/categories/${category.id}`, data);
+      } else {
+        await api.post('/categories', data);
+      }
 
       onCreated();
 
       onClose();
     } catch (error) {
-      console.error('Erro ao criar categoria:', error);
+      console.error(
+        category
+          ? 'Erro ao atualizar categoria:'
+          : 'Erro ao criar categoria:',
+        error,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -84,6 +114,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       setType(newType);
     }
   };
+
+  const isEditing = Boolean(category);
 
   return (
     <Dialog
@@ -109,7 +141,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             fontWeight: 700,
           }}
         >
-          Nova Categoria
+          {isEditing ? 'Editar Categoria' : 'Nova Categoria'}
         </DialogTitle>
 
         <DialogContent
@@ -188,7 +220,6 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
-
         </DialogContent>
 
         <DialogActions
@@ -218,7 +249,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               boxShadow: 'none',
             }}
           >
-            {isSubmitting ? 'Criando...' : 'Criar'}
+            {isSubmitting
+              ? isEditing
+                ? 'Salvando...'
+                : 'Criando...'
+              : isEditing
+                ? 'Salvar'
+                : 'Criar'}
           </Button>
         </DialogActions>
       </Box>
