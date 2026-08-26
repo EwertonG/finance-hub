@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Chip,
   IconButton,
   Table,
@@ -14,6 +15,8 @@ import {
   TableRow,
   Typography,
   useTheme,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
@@ -37,16 +40,33 @@ export const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);    
 
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error'
+  });
+
+  const handleCloseSnackbar = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') return;
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, message, severity });
+  };
 
   const loadTransactions = async () => {
     try {
+      setIsLoading(true);
       const response = await api.get('/transactions');
       setTransactions(response.data);
     } catch (error) {
       console.error('Erro ao buscar lançamentos:', error);
+      showSnackbar('Erro ao carregar lançamentos. Tente novamente.', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -67,20 +87,45 @@ export const Transactions: React.FC = () => {
     try {
       const response = await api.post('/transactions', data);
       setTransactions((prev) => [response.data, ...prev]);
+      showSnackbar('Lançamento adicionado com sucesso!', 'success');
     } catch (error) {
       console.error ('Erro ao criar lançamento:', error);
+      showSnackbar('Erro ao criar lançamento. Tente novamente.', 'error');
     }
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    const isConfirmed = window.confirm('Tem certeza que deseja excluir este lançamento?');
+    if (!isConfirmed) return;
+
     try {
       await api.delete(`/transactions/${id}`);
       setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+      showSnackbar('Lançamento excluído com sucesso!', 'success');
     } catch (error) {
       console.error ('Erro ao deletar lançamento:', error);
+      showSnackbar('Erro ao excluir lançamento. Tente novamente.', 'error');
     }
   };
 
+    useEffect(() => {
+    loadTransactions();
+  }, []);
+
+if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: 240,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Barra de Ações Superior */}
@@ -209,6 +254,22 @@ export const Transactions: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleAddTransaction}
       />
+
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity} 
+          variant="filled"
+          sx={{ width: '100%', color: '#fff' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
