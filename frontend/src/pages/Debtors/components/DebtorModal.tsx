@@ -7,13 +7,13 @@ import {
   Button,
   TextField,
   Box,
-  Typography,
   Switch,
   FormControlLabel,
   Chip,
   IconButton,
   Divider,
   MenuItem,
+  Typography,
   CircularProgress,
 } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -204,7 +204,7 @@ export const DebtorModal: React.FC<DebtorModalProps> = ({ open, onClose, onSubmi
             }
             label={
               <Box>
-                <Typography variant="body2" fontWeight={600}>
+                <Typography variant="body2" sx={{fontWeight:600}}>
                   Incluir minha parte
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -215,7 +215,7 @@ export const DebtorModal: React.FC<DebtorModalProps> = ({ open, onClose, onSubmi
           />
           <Divider />
           <Box>
-            <Typography variant="body2" fontWeight={600} mb={1}>
+            <Typography variant="body2" sx={{fontWeight:600, mb:1}}>
               Pessoas que devem pagar
             </Typography>
             <Box sx={{ display: "flex", gap: 1 }}>
@@ -268,10 +268,10 @@ export const DebtorModal: React.FC<DebtorModalProps> = ({ open, onClose, onSubmi
                 opacity: 0.9,
               }}
             >
-              <Typography variant="body2" color="text.secondary" mb={0.5}>
+              <Typography variant="body2" sx={{color:"text.secondary", mb:0.5}}>
                 Cálculo da divisão
               </Typography>
-              <Typography variant="body1" fontWeight={700} color="primary.main">
+              <Typography variant="body1" sx={{fontWeight:700, color: "primary.main"}}>
                 R$ {individualAmount} por pessoa
               </Typography>
               <Typography variant="caption" color="text.secondary">
