@@ -1,7 +1,12 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'finance_hub_default_secret_key_2026';
-const JWT_EXPIRES_IN = '7d'; // Token válido por 7 dias
+const JWT_SECRET: string = process.env.JWT_SECRET ?? (() => {
+  throw new Error(
+    'JWT_SECRET não definido. Configure a variável de ambiente antes de iniciar o servidor.'
+  );
+})();
+
+const JWT_EXPIRES_IN = '7d';
 
 interface TokenPayload {
   userId: string;
