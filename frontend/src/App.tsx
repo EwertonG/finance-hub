@@ -9,6 +9,7 @@ import { MainLayout } from './layouts/MainLayout/index';
 import { Transactions } from './pages/Transactions';
 import { Dashboard } from './pages/Dashboard';
 import { Categories } from './pages/Categories';
+import { Debtors } from './pages/Debtors';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -41,7 +42,7 @@ export function App() {
               <Route index element={<Dashboard />} />
               <Route path="transactions" element={<Transactions/>} />
               <Route path="categories" element={<Categories />} />
-              <Route path="debtors" element={<h2>Caderno de Devedores</h2>} />
+              <Route path="debtors" element={<Debtors />} />
             </Route>  
 
             <Route path="*" element={<Navigate to="/login" replace />} />
