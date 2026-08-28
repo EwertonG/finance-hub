@@ -13,6 +13,11 @@ import {
   useTheme,
   Snackbar,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 
@@ -65,6 +70,9 @@ export const Categories = () => {
   
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [menuCategory, setMenuCategory] = useState<Category | null>(null);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const [snackbar, setSnackbar] = useState({
     open: false,
