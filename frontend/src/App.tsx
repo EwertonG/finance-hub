@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { lightTheme } from './theme/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { Login } from './pages/Auth/Login';
 import { Register } from './pages/Auth/Register';
 import { MainLayout } from './layouts/MainLayout/index';
@@ -25,6 +26,7 @@ export function App() {
   return (
     <ThemeProvider theme={lightTheme}>
       <CssBaseline />
+      <NotificationProvider>
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -47,8 +49,9 @@ export function App() {
 
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+          </BrowserRouter>
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }
