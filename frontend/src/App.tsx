@@ -10,6 +10,8 @@ import { Transactions } from './pages/Transactions';
 import { Dashboard } from './pages/Dashboard';
 import { Categories } from './pages/Categories';
 import { Debtors } from './pages/Debtors';
+import { PeriodProvider } from './contexts/PeriodContext';
+
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -26,28 +28,30 @@ export function App() {
     <ThemeProvider theme={lightTheme}>
       <CssBaseline />
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+        <PeriodProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            <Route
-              path="/"
-              element={
-                <PrivateRoute>
-                  <MainLayout />
-                </PrivateRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="transactions" element={<Transactions/>} />
-              <Route path="categories" element={<Categories />} />
-              <Route path="debtors" element={<Debtors />} />
-            </Route>  
+              <Route
+                path="/"
+                element={
+                  <PrivateRoute>
+                    <MainLayout />
+                  </PrivateRoute>
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="transactions" element={<Transactions/>} />
+                <Route path="categories" element={<Categories />} />
+                <Route path="debtors" element={<Debtors />} />
+              </Route>  
 
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </BrowserRouter>
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </PeriodProvider>
       </AuthProvider>
     </ThemeProvider>
   );
