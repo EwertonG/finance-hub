@@ -210,7 +210,7 @@ export const Debtors: React.FC = () => {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <PeopleRoundedIcon color="primary" sx={{ fontSize: 28 }} />
           <Box>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
               Caderno de Devedores
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -264,15 +264,15 @@ export const Debtors: React.FC = () => {
                     {card.icon}
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                       {card.title}
                     </Typography>
-                    <Typography variant="h6" fontWeight={700} color={card.color}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: card.color }}>
                       {formatCurrency(card.value)}
                     </Typography>
                   </Box>
                 </Box>
-                <Typography variant="caption" color="text.secondary" mt={1} display="block">
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
                   {card.description}
                 </Typography>
               </CardContent>
@@ -347,7 +347,7 @@ export const Debtors: React.FC = () => {
                           sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                         >
                           <TableCell>
-                            <Typography variant="body2" fontWeight={600}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {debtor.personName}
                             </Typography>
                           </TableCell>
@@ -367,7 +367,7 @@ export const Debtors: React.FC = () => {
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" fontWeight={600} color="primary.main">
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: "primary.main" }}>
                               {formatCurrency(debtor.amount)}
                             </Typography>
                           </TableCell>
@@ -451,7 +451,7 @@ export const Debtors: React.FC = () => {
       >
         <DialogTitle sx={{ fontWeight: 700 }}>Atualizar Status</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
-          <Typography variant="body2" color="text.secondary" mb={2}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Atualize o status de <strong>{editStatusDebtor?.personName}</strong> para o item{" "}
             <strong>{editStatusDebtor?.item}</strong>.
           </Typography>
