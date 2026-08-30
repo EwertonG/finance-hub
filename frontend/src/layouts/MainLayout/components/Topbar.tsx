@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
 import { useLocation } from 'react-router-dom';
+import { PeriodSelector } from './PeriodSelector';
 
 const pageHeaders: Record<string, { title: string; description: string }> = {
   '/': {
@@ -50,8 +51,8 @@ export const Topbar: React.FC = () => {
           {currentHeader.description}
         </Typography>
       </Box>
-
       <Box>
+        <PeriodSelector />
       </Box>
     </Box>
   );
