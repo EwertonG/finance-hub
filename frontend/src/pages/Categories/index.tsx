@@ -11,13 +11,6 @@ import {
   MenuItem,
   Typography,
   useTheme,
-  Snackbar,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 
@@ -34,6 +27,7 @@ import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
 
 import { api } from '../../services/api';
+import { useNotification } from '../../contexts/NotificationContext';
 
 import { CategoryModal } from './components/CategoryModal';
 
@@ -71,23 +65,7 @@ export const Categories = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [menuCategory, setMenuCategory] = useState<Category | null>(null);
 
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error'
-  });
-
-  const handleCloseSnackbar = (event?: React.SyntheticEvent | Event, reason?: string) => {
-    if (reason === 'clickaway') return;
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
-
-  const showSnackbar = (message: string, severity: 'success' | 'error') => {
-    setSnackbar({ open: true, message, severity });
-  };
+  const { notify } = useNotification();
 
   const handleOpenMenu = (
     event: React.MouseEvent<HTMLElement>,
@@ -120,11 +98,11 @@ export const Categories = () => {
 
     try {
       await api.delete(`/categories/${menuCategory.id}`);
-      showSnackbar('Categoria excluída com sucesso!', 'success');
+      notify('Categoria excluída com sucesso!', 'success');
       loadCategories();
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
-      showSnackbar('Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.', 'error');
+      notify('Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.', 'error');
     } finally {
       handleCloseMenu();
     }
@@ -139,7 +117,7 @@ export const Categories = () => {
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
       setError('Não foi possível carregar suas categorias.');
-      showSnackbar('Erro ao carregar categorias. Tente novamente.', 'error');
+      notify('Erro ao carregar categorias. Tente novamente.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +142,7 @@ export const Categories = () => {
       ? 'Categoria atualizada com sucesso!' 
       : 'Categoria criada com sucesso!';
       
-    showSnackbar(successMessage, 'success');
+    notify(successMessage, 'success');
   };
 
   const handleEditCategory = (category: Category) => {
@@ -274,22 +252,6 @@ export const Categories = () => {
         onCreated={handleCategorySaved}
         category={selectedCategory}
       />
-
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={4000} 
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
-          variant="filled"
-          sx={{ width: '100%', color: '#fff' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };
