@@ -3,8 +3,7 @@ import { Box } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
-
-const DRAWER_WIDTH = 280;
+import { DRAWER_WIDTH } from './constants';
 
 export const MainLayout: React.FC = () => {
   return (
