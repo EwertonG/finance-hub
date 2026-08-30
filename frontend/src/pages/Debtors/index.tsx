@@ -20,8 +20,6 @@ import {
   TableRow,
   Typography,
   useTheme,
-  Snackbar,
-  Alert,
   Tooltip,
   Dialog,
   DialogTitle,
@@ -39,6 +37,7 @@ import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import { DebtorModal } from "./components/DebtorModal";
 import type { NewDebtorData } from "./components/DebtorModal";
 import { api } from "../../services/api";
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface Debtor {
   id: string;
@@ -102,20 +101,7 @@ export const Debtors: React.FC = () => {
   const [editStatusDebtor, setEditStatusDebtor] = useState<Debtor | null>(null);
   const [newStatus, setNewStatus] = useState<"PENDING" | "CHARGED" | "PAID">("PENDING");
 
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success" as "success" | "error",
-  });
-
-  const showSnackbar = (message: string, severity: "success" | "error") => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleCloseSnackbar = (_?: React.SyntheticEvent | Event, reason?: string) => {
-    if (reason === "clickaway") return;
-    setSnackbar((prev) => ({ ...prev, open: false }));
-  };
+  const { notify } = useNotification();
 
   const loadData = useCallback(async () => {
     try {
@@ -129,7 +115,7 @@ export const Debtors: React.FC = () => {
       setDebtors(debtorsRes.data);
       setSummary(summaryRes.data);
     } catch {
-      showSnackbar("Erro ao carregar devedores. Tente novamente.", "error");
+      notify("Erro ao carregar devedores. Tente novamente.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -142,10 +128,10 @@ export const Debtors: React.FC = () => {
   const handleCreate = async (data: NewDebtorData) => {
     try {
       await api.post("/debtors", data);
-      showSnackbar("Divisão registrada com sucesso!", "success");
+      notify("Divisão registrada com sucesso!", "success");
       loadData();
     } catch {
-      showSnackbar("Erro ao registrar divisão. Tente novamente.", "error");
+      notify("Erro ao registrar divisão. Tente novamente.", "error");
     }
   };
 
@@ -155,10 +141,10 @@ export const Debtors: React.FC = () => {
       setIsDeleting(true);
       await api.delete(`/debtors/${deleteId}`);
       setDebtors((prev) => prev.filter((d) => d.id !== deleteId));
-      showSnackbar("Devedor excluído com sucesso!", "success");
+      notify("Devedor excluído com sucesso!", "success");
       loadData();
     } catch {
-      showSnackbar("Erro ao excluir devedor.", "error");
+      notify("Erro ao excluir devedor.", "error");
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
@@ -169,11 +155,11 @@ export const Debtors: React.FC = () => {
     if (!editStatusDebtor) return;
     try {
       await api.put(`/debtors/${editStatusDebtor.id}`, { status: newStatus });
-      showSnackbar("Status atualizado com sucesso!", "success");
+      notify("Status atualizado com sucesso!", "success");
       setEditStatusDebtor(null);
       loadData();
     } catch {
-      showSnackbar("Erro ao atualizar status.", "error");
+      notify("Erro ao atualizar status.", "error");
     }
   };
 
@@ -500,23 +486,6 @@ export const Debtors: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: "100%", color: "#fff" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };
