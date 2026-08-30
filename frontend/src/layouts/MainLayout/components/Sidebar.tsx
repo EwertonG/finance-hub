@@ -23,10 +23,9 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { DRAWER_WIDTH } from '../constants';
 
 import logoImg from '../../../assets/logo.png'; 
-
-const DRAWER_WIDTH = 240;
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
