@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 
 export async function createTransaction(req: Request, res: Response) {
   try {
@@ -63,6 +64,8 @@ export async function listTransactions(req: Request, res: Response) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
+    await ensureSubscriptionTransactions(userId);
+
     // Com apenas "year" filtra o ano inteiro (usado pela visão anual do
     // Dashboard); com "month" e "year" filtra o mês específico.
     let dateFilter = {};
@@ -98,7 +101,7 @@ export async function listTransactions(req: Request, res: Response) {
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        include: { category: true },
+        include: { category: true, recurrence: true },
         orderBy: { date: 'desc' },
         ...(parsedLimit ? { skip: (parsedPage - 1) * parsedLimit, take: parsedLimit } : {}),
       }),
@@ -126,6 +129,8 @@ export async function getTransactionSummary(req: Request, res: Response) {
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
+
+    await ensureSubscriptionTransactions(userId);
 
     const currentYear = year ? parseInt(String(year), 10) : new Date().getFullYear();
     const currentMonth = month ? parseInt(String(month), 10) : new Date().getMonth() + 1;
@@ -178,6 +183,8 @@ export async function getAnnualSummary(req: Request, res: Response) {
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
+
+    await ensureSubscriptionTransactions(userId);
 
     const currentYear = year ? parseInt(String(year), 10) : new Date().getFullYear();
 

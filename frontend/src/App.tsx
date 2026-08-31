@@ -11,6 +11,7 @@ import { Transactions } from './pages/Transactions';
 import { Dashboard } from './pages/Dashboard';
 import { Categories } from './pages/Categories';
 import { Debtors } from './pages/Debtors';
+import { Subscriptions } from './pages/Subscriptions';
 import { PeriodProvider } from './contexts/PeriodContext';
 
 
@@ -48,6 +49,7 @@ export function App() {
                 <Route path="transactions" element={<Transactions/>} />
                 <Route path="categories" element={<Categories />} />
                 <Route path="debtors" element={<Debtors />} />
+                <Route path="subscriptions" element={<Subscriptions />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/login" replace />} />

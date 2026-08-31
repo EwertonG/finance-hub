@@ -43,6 +43,8 @@ interface Transaction {
   category: {name: string} | null;
   categoryId: string | null;
   date: string;
+  installmentNumber: number | null;
+  recurrence: { kind: 'INSTALLMENT' | 'SUBSCRIPTION'; installmentTotal: number | null } | null;
 }
 
 interface Category {
@@ -144,6 +146,18 @@ export const Transactions: React.FC = () => {
     try {
       if (editingTransaction) {
         await api.put(`/transactions/${editingTransaction.id}`, data);
+      } else if (data.installmentTotal && data.installmentTotal >= 2) {
+        // Parcelamento cria uma Recurrence + todas as parcelas de uma vez,
+        // não um lançamento único.
+        await api.post('/recurrences', {
+          description: data.description,
+          totalAmount: data.amount,
+          type: data.type,
+          categoryId: data.categoryId,
+          startDate: data.date,
+          kind: 'INSTALLMENT',
+          installmentTotal: data.installmentTotal,
+        });
       } else {
         await api.post('/transactions', data);
       }
@@ -293,12 +307,19 @@ export const Transactions: React.FC = () => {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {tx.description}
                           </Typography>
+                          {tx.installmentNumber && tx.recurrence?.installmentTotal && (
+                            <Chip
+                              label={`${tx.installmentNumber}/${tx.recurrence.installmentTotal}`}
+                              size="small"
+                              sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600, bgcolor: 'action.hover' }}
+                            />
+                          )}
                         </Box>
                       </TableCell>
 
                       <TableCell>
                         <Chip
-                          label={tx.category?.name || 'Sem categoria'} 
+                          label={tx.category?.name || 'Sem categoria'}
                           size="small"
                           sx={{
                             borderRadius: 1.5,
