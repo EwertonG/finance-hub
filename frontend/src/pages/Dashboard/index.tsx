@@ -29,6 +29,7 @@ import { api } from '../../services/api';
 import { usePeriod } from '../../contexts/PeriodContext';
 import { EmptyState } from '../../components/EmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton';
+import { getCategoryIconComponent } from '../../constants/categoryIcons';
 
 interface Summary {
   income: number;
@@ -49,7 +50,7 @@ interface Transaction {
   description: string;
   amount: number;
   type: 'INCOME' | 'EXPENSE';
-  category: { name: string } | null;
+  category: { name: string; color: string; icon: string } | null;
   date: string;
 }
 
@@ -629,6 +630,7 @@ export const Dashboard: React.FC = () => {
                         ) : (
                         periodTransactions.slice(0, 5).map((tx) => {
                           const isIncome = tx.type === 'INCOME';
+                          const CategoryIcon = getCategoryIconComponent(tx.category?.icon);
                           return (
                             <TableRow key={tx.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                               <TableCell>
@@ -655,6 +657,7 @@ export const Dashboard: React.FC = () => {
                               </TableCell>
                               <TableCell>
                                 <Chip
+                                  icon={tx.category ? <CategoryIcon /> : undefined}
                                   label={tx.category?.name || 'Sem categoria'}
                                   size="small"
                                   sx={{
@@ -662,6 +665,7 @@ export const Dashboard: React.FC = () => {
                                     bgcolor: 'action.hover',
                                     color: 'text.primary',
                                     fontWeight: 500,
+                                    '& .MuiChip-icon': { color: tx.category?.color },
                                   }}
                                 />
                               </TableCell>
