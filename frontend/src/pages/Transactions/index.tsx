@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Chip,
   IconButton,
   Table,
@@ -25,11 +24,15 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import { TransactionModal } from './components/TransactionModal';
 import type { NewTransactionData } from './components/TransactionModal';
 import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { usePeriod } from '../../contexts/PeriodContext';
+import { EmptyState } from '../../components/EmptyState';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { TableSkeleton } from '../../components/TableSkeleton';
 
 interface Transaction {
   id: string;
@@ -59,6 +62,9 @@ export const Transactions: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { notify } = useNotification();
   const { month, year, viewMode } = usePeriod();
@@ -134,17 +140,19 @@ export const Transactions: React.FC = () => {
     }
   };
 
-  const handleDeleteTransaction = async (id: string) => {
-    const isConfirmed = window.confirm('Tem certeza que deseja excluir este lançamento?');
-    if (!isConfirmed) return;
-
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
     try {
-      await api.delete(`/transactions/${id}`);
+      setIsDeleting(true);
+      await api.delete(`/transactions/${deleteId}`);
       await loadTransactions();
       notify('Lançamento excluído com sucesso!', 'success');
     } catch (error) {
       console.error ('Erro ao deletar lançamento:', error);
       notify('Erro ao excluir lançamento. Tente novamente.', 'error');
+    } finally {
+      setIsDeleting(false);
+      setDeleteId(null);
     }
   };
 
@@ -152,20 +160,6 @@ export const Transactions: React.FC = () => {
     loadTransactions();
   }, [month, year, viewMode, typeFilter, categoryFilter, page]);
 
-if (isLoading) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: 240,
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Barra de Ações Superior */}
@@ -240,7 +234,20 @@ if (isLoading) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {transactions.map((tx) => {
+                {isLoading ? (
+                  <TableSkeleton rows={5} columns={5} />
+                ) : transactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5}>
+                      <EmptyState
+                        variant="plain"
+                        icon={<ReceiptLongRoundedIcon />}
+                        message="Nenhum lançamento encontrado neste período"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  transactions.map((tx) => {
                   const isIncome = tx.type === 'INCOME';
 
                   return (
@@ -304,17 +311,18 @@ if (isLoading) {
                       </TableCell>
 
                       <TableCell align="right">
-                        <IconButton 
-                            size="small" 
+                        <IconButton
+                            size="small"
                             color="default"
-                            onClick={() => handleDeleteTransaction(tx.id)}
+                            onClick={() => setDeleteId(tx.id)}
                             >
                           <DeleteOutlineRoundedIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
                     </TableRow>
                   );
-                })}
+                })
+                )}
               </TableBody>
             </Table>
           </TableContainer>
@@ -337,6 +345,15 @@ if (isLoading) {
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleAddTransaction}
+      />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Excluir lançamento"
+        message="Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita."
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleConfirmDelete}
+        loading={isDeleting}
       />
     </Box>
   );
