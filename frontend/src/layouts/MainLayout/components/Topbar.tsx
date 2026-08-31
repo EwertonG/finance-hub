@@ -28,6 +28,10 @@ const pageHeaders: Record<string, { title: string; description: string }> = {
     title: 'Metas',
     description: 'Guarde dinheiro para seus objetivos e acompanhe o progresso.',
   },
+  '/profile': {
+    title: 'Perfil',
+    description: 'Gerencie seus dados, senha e preferências.',
+  },
 };
 
 export const Topbar: React.FC = () => {
@@ -39,9 +43,9 @@ export const Topbar: React.FC = () => {
     description: 'Plataforma de gestão financeira.',
   };
 
-  // Categorias, Assinaturas e Metas não têm recorte temporal, então o
-  // seletor de período não se aplica a essas telas.
-  const showPeriodSelector = !['/categories', '/subscriptions', '/goals'].includes(location.pathname);
+  // Categorias, Assinaturas, Metas e Perfil não têm recorte temporal, então
+  // o seletor de período não se aplica a essas telas.
+  const showPeriodSelector = !['/categories', '/subscriptions', '/goals', '/profile'].includes(location.pathname);
 
   return (
     <Box

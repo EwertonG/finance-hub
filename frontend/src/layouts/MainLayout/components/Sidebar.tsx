@@ -22,6 +22,7 @@ import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -44,6 +45,11 @@ export const Sidebar: React.FC = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleGoToProfile = () => {
+    handleMenuClose();
+    navigate('/profile');
   };
 
   const handleLogout = () => {
@@ -144,11 +150,11 @@ export const Sidebar: React.FC = () => {
           sx={{ 
             display: 'flex', 
             alignItems: 'center', 
-            p: 1.5, 
+            p: 1.5,
             borderRadius: 3,
-            bgcolor: '#F8FAFC',
-            border: '1px solid #F1F5F9',
-            '&:hover': { bgcolor: '#F1F5F9' },
+            bgcolor: 'action.hover',
+            border: `1px solid ${theme.palette.divider}`,
+            '&:hover': { bgcolor: 'action.selected' },
             transition: 'background-color 0.2s'
           }}
         >
@@ -192,6 +198,12 @@ export const Sidebar: React.FC = () => {
             }
           }}
         >
+          <MenuItem onClick={handleGoToProfile} sx={{ py: 1.5 }}>
+            <ListItemIcon>
+              <PersonRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Perfil
+          </MenuItem>
           <MenuItem onClick={handleLogout} sx={{ color: 'error.main', py: 1.5 }}>
             <ListItemIcon>
               <LogoutRoundedIcon fontSize="small" color="error" />
