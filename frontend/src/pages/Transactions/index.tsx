@@ -70,7 +70,6 @@ export const Transactions: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const { notify } = useNotification();
   const { month, year, viewMode } = usePeriod();
@@ -172,19 +171,24 @@ export const Transactions: React.FC = () => {
     }
   };
 
+  // Otimista: some da lista e fecha o diálogo na hora; a paginação
+  // (total/totalPages) é reconciliada em segundo plano após confirmar.
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
+    const idToDelete = deleteId;
+    const previousTransactions = transactions;
+
+    setTransactions((prev) => prev.filter((tx) => tx.id !== idToDelete));
+    setDeleteId(null);
+
     try {
-      setIsDeleting(true);
-      await api.delete(`/transactions/${deleteId}`);
-      await loadTransactions();
+      await api.delete(`/transactions/${idToDelete}`);
       notify('Lançamento excluído com sucesso!', 'success');
+      loadTransactions();
     } catch (error) {
       console.error ('Erro ao deletar lançamento:', error);
+      setTransactions(previousTransactions);
       notify('Erro ao excluir lançamento. Tente novamente.', 'error');
-    } finally {
-      setIsDeleting(false);
-      setDeleteId(null);
     }
   };
 
@@ -400,7 +404,6 @@ export const Transactions: React.FC = () => {
         message="Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita."
         onClose={() => setDeleteId(null)}
         onConfirm={handleConfirmDelete}
-        loading={isDeleting}
       />
     </Box>
   );
