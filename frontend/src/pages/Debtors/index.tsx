@@ -198,32 +198,28 @@ export const Debtors: React.FC = () => {
       title: "A Receber",
       value: summary?.totalToReceive ?? 0,
       icon: <AccountBalanceWalletRoundedIcon />,
-      color: theme.palette.primary.main,
-      bgcolor: "#f0f7ff",
+      paletteKey: "primary" as const,
       description: "Pendente + Cobrado",
     },
     {
       title: "Pendente",
       value: summary?.totalPending ?? 0,
       icon: <HourglassEmptyRoundedIcon />,
-      color: theme.palette.warning.main,
-      bgcolor: "#fffbf0",
+      paletteKey: "warning" as const,
       description: "Ainda não cobrado",
     },
     {
       title: "Cobrado",
       value: summary?.totalCharged ?? 0,
       icon: <NotificationsActiveRoundedIcon />,
-      color: theme.palette.info.main,
-      bgcolor: "#f0f8ff",
+      paletteKey: "info" as const,
       description: "Aguardando pagamento",
     },
     {
       title: "Recebido",
       value: summary?.totalPaid ?? 0,
       icon: <CheckCircleRoundedIcon />,
-      color: theme.palette.success.main,
-      bgcolor: "#f0fff4",
+      paletteKey: "success" as const,
       description: "Já pago",
     },
   ];
@@ -253,35 +249,25 @@ export const Debtors: React.FC = () => {
       <Grid container spacing={2}>
         {summaryCards.map((card) => (
           <Grid size={{ xs: 12, sm: 6, md: 3 }} key={card.title}>
-            <Card
-              sx={{
-                borderRadius: 3,
-                boxShadow: "none",
-                border: `1px solid ${theme.palette.divider}`,
-                bgcolor: card.bgcolor,
-              }}
-            >
+            <Card sx={{ borderRadius: 3, boxShadow: "none", border: `1px solid ${theme.palette.divider}` }}>
               <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                   <Box
                     sx={{
-                      width: 40,
-                      height: 40,
+                      p: 1.5,
                       borderRadius: 2,
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      bgcolor: card.color,
-                      color: "white",
+                      bgcolor: `${card.paletteKey}.light`,
+                      color: `${card.paletteKey}.dark`,
                     }}
                   >
                     {card.icon}
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                       {card.title}
                     </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: card.color }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: `${card.paletteKey}.main` }}>
                       {formatCurrency(card.value)}
                     </Typography>
                   </Box>
