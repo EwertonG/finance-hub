@@ -5,6 +5,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  createdAt?: string;
 }
 
 interface AuthContextData {
@@ -13,6 +14,7 @@ interface AuthContextData {
   loading: boolean;
   signIn: (token: string, user: User) => void;
   signOut: () => void;
+  updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -51,8 +53,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   }
 
+  function updateUser(userData: User) {
+    setUser(userData);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, signIn, signOut, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

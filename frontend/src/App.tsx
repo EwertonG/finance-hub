@@ -1,9 +1,10 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
-import { lightTheme } from './theme/theme';
+import { lightTheme, darkTheme } from './theme/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ThemeModeProvider, useThemeMode } from './contexts/ThemeModeContext';
 import { Login } from './pages/Auth/Login';
 import { Register } from './pages/Auth/Register';
 import { MainLayout } from './layouts/MainLayout/index';
@@ -13,6 +14,7 @@ import { Categories } from './pages/Categories';
 import { Debtors } from './pages/Debtors';
 import { Subscriptions } from './pages/Subscriptions';
 import { Goals } from './pages/Goals';
+import { Profile } from './pages/Profile';
 import { PeriodProvider } from './contexts/PeriodContext';
 
 
@@ -26,9 +28,12 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-export function App() {
+const AppRoutes: React.FC = () => {
+  const { mode } = useThemeMode();
+  const theme = mode === 'dark' ? darkTheme : lightTheme;
+
   return (
-    <ThemeProvider theme={lightTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <NotificationProvider>
       <AuthProvider>
@@ -52,6 +57,7 @@ export function App() {
                 <Route path="debtors" element={<Debtors />} />
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="goals" element={<Goals />} />
+                <Route path="profile" element={<Profile />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/login" replace />} />
@@ -61,6 +67,14 @@ export function App() {
       </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>
+  );
+};
+
+export function App() {
+  return (
+    <ThemeModeProvider>
+      <AppRoutes />
+    </ThemeModeProvider>
   );
 }
 
