@@ -27,16 +27,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import { SubscriptionModal } from './components/SubscriptionModal';
-
-interface Subscription {
-  id: string;
-  description: string;
-  amount: number;
-  type: 'INCOME' | 'EXPENSE';
-  startDate: string;
-  active: boolean;
-  category: { name: string } | null;
-}
+import type { Subscription } from './components/SubscriptionModal';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -54,7 +45,6 @@ export const Subscriptions: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const { notify } = useNotification();
 
@@ -75,31 +65,43 @@ export const Subscriptions: React.FC = () => {
     loadSubscriptions();
   }, []);
 
+  // Otimista: alterna o status na hora, sem esperar o servidor confirmar;
+  // reverte e avisa se der erro.
   const handleToggleActive = async (subscription: Subscription) => {
+    const nextActive = !subscription.active;
+    setSubscriptions((prev) => prev.map((s) => (s.id === subscription.id ? { ...s, active: nextActive } : s)));
+
     try {
-      await api.put(`/recurrences/${subscription.id}`, { active: !subscription.active });
-      notify(subscription.active ? 'Assinatura cancelada.' : 'Assinatura reativada.', 'success');
-      loadSubscriptions();
+      await api.put(`/recurrences/${subscription.id}`, { active: nextActive });
+      notify(nextActive ? 'Assinatura reativada.' : 'Assinatura cancelada.', 'success');
     } catch (error) {
       console.error('Erro ao atualizar assinatura:', error);
+      setSubscriptions((prev) => prev.map((s) => (s.id === subscription.id ? subscription : s)));
       notify('Erro ao atualizar assinatura. Tente novamente.', 'error');
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
+    const idToDelete = deleteId;
+    const previousSubscriptions = subscriptions;
+
+    setSubscriptions((prev) => prev.filter((s) => s.id !== idToDelete));
+    setDeleteId(null);
+
     try {
-      setIsDeleting(true);
-      await api.delete(`/recurrences/${deleteId}`);
+      await api.delete(`/recurrences/${idToDelete}`);
       notify('Assinatura excluída. Os lançamentos já gerados foram mantidos.', 'success');
-      loadSubscriptions();
     } catch (error) {
       console.error('Erro ao excluir assinatura:', error);
+      setSubscriptions(previousSubscriptions);
       notify('Erro ao excluir assinatura. Tente novamente.', 'error');
-    } finally {
-      setIsDeleting(false);
-      setDeleteId(null);
     }
+  };
+
+  const handleSubscriptionSaved = (subscription: Subscription) => {
+    setSubscriptions((prev) => [...prev, subscription]);
+    notify('Assinatura criada com sucesso!', 'success');
   };
 
   return (
@@ -212,7 +214,7 @@ export const Subscriptions: React.FC = () => {
       <SubscriptionModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onCreated={loadSubscriptions}
+        onSaved={handleSubscriptionSaved}
       />
 
       <ConfirmDialog
@@ -221,7 +223,6 @@ export const Subscriptions: React.FC = () => {
         message="Tem certeza que deseja excluir esta assinatura? Os lançamentos já gerados são mantidos, só a geração automática futura para."
         onClose={() => setDeleteId(null)}
         onConfirm={handleConfirmDelete}
-        loading={isDeleting}
       />
     </Box>
   );
