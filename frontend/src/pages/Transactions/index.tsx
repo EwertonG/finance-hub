@@ -24,6 +24,7 @@ import { TransactionModal } from './components/TransactionModal';
 import type { NewTransactionData } from './components/TransactionModal';
 import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { usePeriod } from '../../contexts/PeriodContext';
 
 interface Transaction {
   id: string;
@@ -37,16 +38,20 @@ interface Transaction {
 export const Transactions: React.FC = () => {
   const theme = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);    
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
 
   const { notify } = useNotification();
+  const { month, year, viewMode } = usePeriod();
 
   const loadTransactions = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/transactions');
+      // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
+      // inteiro (o backend aceita "year" sozinho para esse caso).
+      const periodParams = viewMode === 'monthly' ? { month, year } : { year };
+      const response = await api.get('/transactions', { params: periodParams });
       setTransactions(response.data);
     } catch (error) {
       console.error('Erro ao buscar lançamentos:', error);
@@ -71,8 +76,10 @@ export const Transactions: React.FC = () => {
 
   const handleAddTransaction = async (data: NewTransactionData) => {
     try {
-      const response = await api.post('/transactions', data);
-      setTransactions((prev) => [response.data, ...prev]);
+      await api.post('/transactions', data);
+      // Recarrega da API em vez de inserir localmente: o novo lançamento só
+      // deve aparecer na lista se cair dentro do período selecionado.
+      await loadTransactions();
       notify('Lançamento adicionado com sucesso!', 'success');
     } catch (error) {
       console.error ('Erro ao criar lançamento:', error);
@@ -94,9 +101,9 @@ export const Transactions: React.FC = () => {
     }
   };
 
-    useEffect(() => {
+  useEffect(() => {
     loadTransactions();
-  }, []);
+  }, [month, year, viewMode]);
 
 if (isLoading) {
     return (
