@@ -63,13 +63,17 @@ export async function listTransactions(req: Request, res: Response) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
+    // Com apenas "year" filtra o ano inteiro (usado pela visão anual do
+    // Dashboard); com "month" e "year" filtra o mês específico.
     let dateFilter = {};
-    if (month && year) {
-      const parsedMonth = parseInt(String(month), 10);
+    if (year) {
       const parsedYear = parseInt(String(year), 10);
-
-      const startDate = new Date(parsedYear, parsedMonth - 1, 1);
-      const endDate = new Date(parsedYear, parsedMonth, 0, 23, 59, 59, 999);
+      const startDate = month
+        ? new Date(parsedYear, parseInt(String(month), 10) - 1, 1)
+        : new Date(parsedYear, 0, 1);
+      const endDate = month
+        ? new Date(parsedYear, parseInt(String(month), 10), 0, 23, 59, 59, 999)
+        : new Date(parsedYear, 11, 31, 23, 59, 59, 999);
 
       dateFilter = {
         date: {
