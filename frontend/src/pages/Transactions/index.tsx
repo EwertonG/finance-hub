@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
@@ -40,6 +41,7 @@ interface Transaction {
   amount: number;
   type: 'INCOME' | 'EXPENSE';
   category: {name: string} | null;
+  categoryId: string | null;
   date: string;
 }
 
@@ -54,6 +56,7 @@ export const Transactions: React.FC = () => {
   const theme = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -127,16 +130,30 @@ export const Transactions: React.FC = () => {
     return `${day}/${month}/${year}`;
   };
 
-  const handleAddTransaction = async (data: NewTransactionData) => {
+  const handleOpenCreateModal = () => {
+    setEditingTransaction(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (tx: Transaction) => {
+    setEditingTransaction(tx);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveTransaction = async (data: NewTransactionData) => {
     try {
-      await api.post('/transactions', data);
-      // Recarrega da API em vez de inserir localmente: o novo lançamento só
-      // deve aparecer na lista se cair dentro do período selecionado.
+      if (editingTransaction) {
+        await api.put(`/transactions/${editingTransaction.id}`, data);
+      } else {
+        await api.post('/transactions', data);
+      }
+      // Recarrega da API em vez de mexer no array local: o lançamento só
+      // deve aparecer na lista se cair dentro do período/filtros selecionados.
       await loadTransactions();
-      notify('Lançamento adicionado com sucesso!', 'success');
+      notify(editingTransaction ? 'Lançamento atualizado com sucesso!' : 'Lançamento adicionado com sucesso!', 'success');
     } catch (error) {
-      console.error ('Erro ao criar lançamento:', error);
-      notify('Erro ao criar lançamento. Tente novamente.', 'error');
+      console.error('Erro ao salvar lançamento:', error);
+      notify(editingTransaction ? 'Erro ao atualizar lançamento. Tente novamente.' : 'Erro ao criar lançamento. Tente novamente.', 'error');
     }
   };
 
@@ -198,7 +215,7 @@ export const Transactions: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreateModal}
           sx={{
             borderRadius: 2,
             px: 2.5,
@@ -311,13 +328,14 @@ export const Transactions: React.FC = () => {
                       </TableCell>
 
                       <TableCell align="right">
-                        <IconButton
-                            size="small"
-                            color="default"
-                            onClick={() => setDeleteId(tx.id)}
-                            >
-                          <DeleteOutlineRoundedIcon fontSize="small" />
-                        </IconButton>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                          <IconButton size="small" onClick={() => handleOpenEditModal(tx)}>
+                            <EditRoundedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="default" onClick={() => setDeleteId(tx.id)}>
+                            <DeleteOutlineRoundedIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   );
@@ -343,8 +361,12 @@ export const Transactions: React.FC = () => {
 
       <TransactionModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddTransaction}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTransaction(null);
+        }}
+        onSubmit={handleSaveTransaction}
+        transaction={editingTransaction}
       />
 
       <ConfirmDialog
