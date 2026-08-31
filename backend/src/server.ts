@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth.routes.js';
 import { categoryRoutes } from './routes/category.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
 import { debtorRoutes } from './routes/debtor.routes.js';
+import { recurrenceRoutes } from './routes/recurrence.routes.js';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use('/auth', authRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/transactions', transactionRoutes);
 app.use('/debtors', debtorRoutes);
+app.use('/recurrences', recurrenceRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
