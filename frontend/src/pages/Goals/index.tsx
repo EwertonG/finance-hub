@@ -77,7 +77,6 @@ export const Goals: React.FC = () => {
   const [contributionGoal, setContributionGoal] = useState<Goal | null>(null);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadGoals = async () => {
     try {
@@ -106,19 +105,23 @@ export const Goals: React.FC = () => {
     setIsGoalModalOpen(true);
   };
 
+  // Otimista: some da lista na hora; só volta a consultar o servidor se a
+  // exclusão falhar.
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
+    const idToDelete = deleteId;
+    const previousGoals = goals;
+
+    setGoals((prev) => prev.filter((g) => g.id !== idToDelete));
+    setDeleteId(null);
+
     try {
-      setIsDeleting(true);
-      await api.delete(`/goals/${deleteId}`);
+      await api.delete(`/goals/${idToDelete}`);
       notify('Meta excluída com sucesso!', 'success');
-      loadGoals();
     } catch (error) {
       console.error('Erro ao excluir meta:', error);
+      setGoals(previousGoals);
       notify('Erro ao excluir meta. Tente novamente.', 'error');
-    } finally {
-      setIsDeleting(false);
-      setDeleteId(null);
     }
   };
 
@@ -264,7 +267,6 @@ export const Goals: React.FC = () => {
         message="Tem certeza que deseja excluir esta meta? Todo o histórico de depósitos e saques dela também será removido."
         onClose={() => setDeleteId(null)}
         onConfirm={handleConfirmDelete}
-        loading={isDeleting}
       />
     </Box>
   );
