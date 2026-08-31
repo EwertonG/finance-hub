@@ -5,17 +5,18 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   IconButton,
-  Menu,
-  MenuItem,
+  Skeleton,
+  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 
 import RestaurantRoundedIcon from '@mui/icons-material/RestaurantRounded';
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded';
@@ -30,6 +31,8 @@ import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 
 import { CategoryModal } from './components/CategoryModal';
+import { EmptyState } from '../../components/EmptyState';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 interface Category {
   id: string;
@@ -61,50 +64,25 @@ export const Categories = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [menuCategory, setMenuCategory] = useState<Category | null>(null);
+
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { notify } = useNotification();
 
-  const handleOpenMenu = (
-    event: React.MouseEvent<HTMLElement>,
-    category: Category,
-  ) => {
-    setMenuAnchorEl(event.currentTarget);
-    setMenuCategory(category);
-  };
-
-  const handleCloseMenu = () => {
-    setMenuAnchorEl(null);
-    setMenuCategory(null);
-  };
-
-  const handleEditFromMenu = () => {
-    if (!menuCategory) return;
-    handleEditCategory(menuCategory);
-    handleCloseMenu();
-  };
-
-  const handleDeleteFromMenu = async () => {
-    if (!menuCategory) return;
-
-    const isConfirmed = window.confirm(`Tem certeza que deseja excluir a categoria "${menuCategory.name}"?`);
-    
-    if (!isConfirmed) {
-      handleCloseMenu();
-      return;
-    }
-
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
     try {
-      await api.delete(`/categories/${menuCategory.id}`);
+      setIsDeleting(true);
+      await api.delete(`/categories/${deleteId}`);
       notify('Categoria excluída com sucesso!', 'success');
       loadCategories();
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
       notify('Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.', 'error');
     } finally {
-      handleCloseMenu();
+      setIsDeleting(false);
+      setDeleteId(null);
     }
   };
 
@@ -150,14 +128,6 @@ export const Categories = () => {
     setIsModalOpen(true);
   };
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (error) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 240, gap: 2 }}>
@@ -182,68 +152,87 @@ export const Categories = () => {
       </Box>
 
       {/* LISTA DE CATEGORIAS */}
-      <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
-        <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-          {categories.map((category, index) => {
-            const isIncome = category.type === 'INCOME';
-
-            return (
+      {isLoading ? (
+        <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
+          <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+            {Array.from({ length: 5 }).map((_, index) => (
               <Box
-                key={category.id}
+                key={index}
                 sx={{
                   display: 'flex', alignItems: 'center', gap: 2, px: 3, py: 2,
-                  borderBottom: index !== categories.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
-                  '&:hover': { bgcolor: 'action.hover' },
-                  transition: 'background-color 0.2s',
+                  borderBottom: index !== 4 ? `1px solid ${theme.palette.divider}` : 'none',
                 }}
               >
+                <Skeleton variant="rounded" width={48} height={48} sx={{ borderRadius: 2.5, flexShrink: 0 }} />
+                <Skeleton variant="text" sx={{ flexGrow: 1, fontSize: '1rem' }} />
+                <Skeleton variant="rounded" width={70} height={24} sx={{ borderRadius: 1.5 }} />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      ) : categories.length === 0 ? (
+        <EmptyState icon={<CategoryRoundedIcon />} message="Nenhuma categoria encontrada" />
+      ) : (
+        <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
+          <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+            {categories.map((category, index) => {
+              const isIncome = category.type === 'INCOME';
+
+              return (
                 <Box
+                  key={category.id}
                   sx={{
-                    width: 48, height: 48, borderRadius: 2.5, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', bgcolor: alpha(category.color, 0.12), color: category.color,
-                    flexShrink: 0, '& svg': { fontSize: 25 },
+                    display: 'flex', alignItems: 'center', gap: 2, px: 3, py: 2,
+                    borderBottom: index !== categories.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
+                    '&:hover': { bgcolor: 'action.hover' },
+                    transition: 'background-color 0.2s',
                   }}
                 >
-                  {getCategoryIcon(category.name)}
+                  <Box
+                    sx={{
+                      width: 48, height: 48, borderRadius: 2.5, display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', bgcolor: alpha(category.color, 0.12), color: category.color,
+                      flexShrink: 0, '& svg': { fontSize: 25 },
+                    }}
+                  >
+                    {getCategoryIcon(category.name)}
+                  </Box>
+
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                      {category.name}
+                    </Typography>
+                  </Box>
+
+                  <Chip
+                    label={isIncome ? 'Receita' : 'Despesa'}
+                    size="small"
+                    sx={{
+                      borderRadius: 1.5,
+                      bgcolor: isIncome ? 'success.light' : 'error.light',
+                      color: isIncome ? 'success.dark' : 'error.dark',
+                      fontWeight: 600,
+                    }}
+                  />
+
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Tooltip title="Editar">
+                      <IconButton size="small" onClick={() => handleEditCategory(category)}>
+                        <EditRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Excluir">
+                      <IconButton size="small" color="default" onClick={() => setDeleteId(category.id)}>
+                        <DeleteOutlineRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                 </Box>
-
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {category.name}
-                  </Typography>
-                </Box>
-
-                <Chip
-                  label={isIncome ? 'Receita' : 'Despesa'}
-                  size="small"
-                  sx={{
-                    borderRadius: 1.5,
-                    bgcolor: isIncome ? 'success.light' : 'error.light',
-                    color: isIncome ? 'success.dark' : 'error.dark',
-                    fontWeight: 600,
-                  }}
-                />
-
-                <IconButton size="small" onClick={(event) => handleOpenMenu(event, category)} sx={{ color: 'text.secondary' }}>
-                  <MoreVertRoundedIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      {/* MENU SUSPENSO */}
-      <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleCloseMenu}>
-        <MenuItem onClick={handleEditFromMenu}>Editar</MenuItem>
-
-        <MenuItem 
-            onClick={handleDeleteFromMenu} 
-            sx={{ color: 'error.main' }}
-          >
-            Excluir
-          </MenuItem>
-        </Menu>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* MODAL */}
       <CategoryModal
@@ -251,6 +240,15 @@ export const Categories = () => {
         onClose={handleCloseModal}
         onCreated={handleCategorySaved}
         category={selectedCategory}
+      />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Excluir categoria"
+        message="Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita."
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleConfirmDelete}
+        loading={isDeleting}
       />
     </Box>
   );

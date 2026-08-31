@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Grid,
   IconButton,
   MenuItem,
@@ -40,6 +39,9 @@ import type { NewDebtorData } from "./components/DebtorModal";
 import { api } from "../../services/api";
 import { useNotification } from '../../contexts/NotificationContext';
 import { usePeriod } from '../../contexts/PeriodContext';
+import { EmptyState } from '../../components/EmptyState';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { TableSkeleton } from '../../components/TableSkeleton';
 
 interface Debtor {
   id: string;
@@ -228,19 +230,8 @@ export const Debtors: React.FC = () => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <PeopleRoundedIcon color="primary" sx={{ fontSize: 28 }} />
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Caderno de Devedores
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Gerencie divisões de conta e cobranças
-            </Typography>
-          </Box>
-        </Box>
+      {/* Barra de Ações Superior */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}
@@ -323,44 +314,44 @@ export const Debtors: React.FC = () => {
       </Box>
 
       {/* Table */}
-      {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 240 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Card
-          sx={{
-            borderRadius: 3,
-            boxShadow: "none",
-            border: `1px solid ${theme.palette.divider}`,
-            overflow: "hidden",
-          }}
-        >
-          <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-            <TableContainer>
-              <Table>
-                <TableHead sx={{ bgcolor: "action.hover" }}>
+      <Card
+        sx={{
+          borderRadius: 3,
+          boxShadow: "none",
+          border: `1px solid ${theme.palette.divider}`,
+          overflow: "hidden",
+        }}
+      >
+        <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
+          <TableContainer>
+            <Table>
+              <TableHead sx={{ bgcolor: "action.hover" }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Pessoa</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Item</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Data</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Valor Total</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Parte Dela</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: "text.secondary" }}>
+                    Ações
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {isLoading ? (
+                  <TableSkeleton rows={5} columns={7} />
+                ) : debtors.length === 0 ? (
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Pessoa</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Item</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Data</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Valor Total</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Parte Dela</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "text.secondary" }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: "text.secondary" }}>
-                      Ações
+                    <TableCell colSpan={7}>
+                      <EmptyState
+                        variant="plain"
+                        icon={<PeopleRoundedIcon />}
+                        message="Nenhum devedor encontrado"
+                      />
                     </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {debtors.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 6, color: "text.secondary" }}>
-                        <PeopleRoundedIcon sx={{ fontSize: 40, mb: 1, opacity: 0.3 }} />
-                        <Typography variant="body2">Nenhum devedor encontrado</Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
+                ) : (
                     debtors.map((debtor) => {
                       const statusCfg = STATUS_CONFIG[debtor.status];
                       return (
@@ -425,13 +416,12 @@ export const Debtors: React.FC = () => {
                         </TableRow>
                       );
                     })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
 
       {!isLoading && totalPages > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center" }}>
@@ -449,32 +439,14 @@ export const Debtors: React.FC = () => {
       <DebtorModal open={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreate} />
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={!!deleteId}
+        title="Excluir devedor"
+        message="Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita."
         onClose={() => setDeleteId(null)}
-        maxWidth="xs"
-        fullWidth
-        slotProps={{ paper: { sx: { borderRadius: 3 } } }}
-      >
-        <DialogTitle sx={{ fontWeight: 700 }}>Excluir devedor</DialogTitle>
-        <DialogContent>
-          <Typography>Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteId(null)} color="inherit" sx={{ textTransform: "none", fontWeight: 600 }}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={isDeleting}
-            onClick={handleConfirmDelete}
-            sx={{ textTransform: "none", fontWeight: 600, boxShadow: "none" }}
-          >
-            {isDeleting ? <CircularProgress size={18} color="inherit" /> : "Excluir"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleConfirmDelete}
+        loading={isDeleting}
+      />
 
       {/* Edit Status Dialog */}
       <Dialog
