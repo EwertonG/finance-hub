@@ -15,6 +15,11 @@ import {
   TableRow,
   Typography,
   useTheme,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Pagination,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
@@ -35,6 +40,13 @@ interface Transaction {
   date: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+}
+
+const PAGE_SIZE = 10;
+
 export const Transactions: React.FC = () => {
   const theme = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -42,8 +54,34 @@ export const Transactions: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const { notify } = useNotification();
   const { month, year, viewMode } = usePeriod();
+
+  useEffect(() => {
+    api.get('/categories').then((res) => setCategories(res.data));
+  }, []);
+
+  // Muda de período reseta a página para não ficar numa página que pode
+  // não existir mais para o novo recorte.
+  useEffect(() => {
+    setPage(1);
+  }, [month, year, viewMode]);
+
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value);
+    setPage(1);
+  };
+
+  const handleCategoryFilterChange = (value: string) => {
+    setCategoryFilter(value);
+    setPage(1);
+  };
 
   const loadTransactions = async () => {
     try {
@@ -51,8 +89,17 @@ export const Transactions: React.FC = () => {
       // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
       // inteiro (o backend aceita "year" sozinho para esse caso).
       const periodParams = viewMode === 'monthly' ? { month, year } : { year };
-      const response = await api.get('/transactions', { params: periodParams });
-      setTransactions(response.data);
+      const response = await api.get('/transactions', {
+        params: {
+          ...periodParams,
+          ...(typeFilter !== 'ALL' ? { type: typeFilter } : {}),
+          ...(categoryFilter !== 'ALL' ? { categoryId: categoryFilter } : {}),
+          page,
+          limit: PAGE_SIZE,
+        },
+      });
+      setTransactions(response.data.data);
+      setTotalPages(response.data.totalPages);
     } catch (error) {
       console.error('Erro ao buscar lançamentos:', error);
       notify('Erro ao carregar lançamentos. Tente novamente.', 'error');
@@ -93,7 +140,7 @@ export const Transactions: React.FC = () => {
 
     try {
       await api.delete(`/transactions/${id}`);
-      setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+      await loadTransactions();
       notify('Lançamento excluído com sucesso!', 'success');
     } catch (error) {
       console.error ('Erro ao deletar lançamento:', error);
@@ -103,7 +150,7 @@ export const Transactions: React.FC = () => {
 
   useEffect(() => {
     loadTransactions();
-  }, [month, year, viewMode]);
+  }, [month, year, viewMode, typeFilter, categoryFilter, page]);
 
 if (isLoading) {
     return (
@@ -122,7 +169,38 @@ if (isLoading) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Barra de Ações Superior */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Tipo</InputLabel>
+            <Select
+              value={typeFilter}
+              label="Tipo"
+              onChange={(e) => handleTypeFilterChange(e.target.value)}
+              sx={{ borderRadius: 2 }}
+            >
+              <MenuItem value="ALL">Todos</MenuItem>
+              <MenuItem value="INCOME">Receita</MenuItem>
+              <MenuItem value="EXPENSE">Despesa</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Categoria</InputLabel>
+            <Select
+              value={categoryFilter}
+              label="Categoria"
+              onChange={(e) => handleCategoryFilterChange(e.target.value)}
+              sx={{ borderRadius: 2 }}
+            >
+              <MenuItem value="ALL">Todas</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}
@@ -242,6 +320,19 @@ if (isLoading) {
           </TableContainer>
         </CardContent>
       </Card>
+
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            shape="rounded"
+          />
+        </Box>
+      )}
+
       <TransactionModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
