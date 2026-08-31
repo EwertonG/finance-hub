@@ -8,12 +8,21 @@ export async function ensureSubscriptionTransactions(userId: string) {
     where: { userId, kind: 'SUBSCRIPTION', active: true },
   });
 
+  if (subscriptions.length === 0) return;
+
   const now = new Date();
 
+  // Uma única query agrupada em vez de um count por assinatura: essa função
+  // roda em toda leitura de lançamentos, então o custo por assinatura soma rápido.
+  const counts = await prisma.transaction.groupBy({
+    by: ['recurrenceId'],
+    where: { recurrenceId: { in: subscriptions.map((s) => s.id) } },
+    _count: true,
+  });
+  const existingCountByRecurrence = new Map(counts.map((c) => [c.recurrenceId, c._count]));
+
   for (const subscription of subscriptions) {
-    const existingCount = await prisma.transaction.count({
-      where: { recurrenceId: subscription.id },
-    });
+    const existingCount = existingCountByRecurrence.get(subscription.id) ?? 0;
 
     // Datas são armazenadas como UTC-meia-noite; usar os getters locais aqui
     // misturaria fuso e deslocaria o dia (bug já visto em teste manual).
