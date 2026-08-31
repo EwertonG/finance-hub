@@ -65,16 +65,25 @@ export async function createRecurrence(req: Request, res: Response) {
 
       // Total já é conhecido de antemão, então todas as parcelas são
       // criadas de uma vez (diferente da assinatura, que não tem fim).
-      const transactionsData = Array.from({ length: total }, (_, i) => ({
-        description: `${description} (${i + 1}/${total})`,
-        amount: installmentAmount,
-        date: new Date(start.getFullYear(), start.getMonth() + i, start.getDate()),
-        type,
-        userId,
-        categoryId: categoryId ? String(categoryId) : null,
-        recurrenceId: recurrence.id,
-        installmentNumber: i + 1,
-      }));
+      // Datas são UTC-meia-noite; usar getters locais deslocaria o dia.
+      const startYear = start.getUTCFullYear();
+      const startMonth = start.getUTCMonth();
+      const startDay = start.getUTCDate();
+
+      const transactionsData = Array.from({ length: total }, (_, i) => {
+        const month = startMonth + i;
+        const daysInMonth = new Date(Date.UTC(startYear, month + 1, 0)).getUTCDate();
+        return {
+          description: `${description} (${i + 1}/${total})`,
+          amount: installmentAmount,
+          date: new Date(Date.UTC(startYear, month, Math.min(startDay, daysInMonth))),
+          type,
+          userId,
+          categoryId: categoryId ? String(categoryId) : null,
+          recurrenceId: recurrence.id,
+          installmentNumber: i + 1,
+        };
+      });
 
       await prisma.transaction.createMany({ data: transactionsData });
 
