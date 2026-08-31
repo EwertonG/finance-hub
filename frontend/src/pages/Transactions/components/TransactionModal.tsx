@@ -24,10 +24,20 @@ export interface NewTransactionData {
   date: string;
 }
 
+export interface EditableTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'INCOME' | 'EXPENSE';
+  categoryId: string | null;
+  date: string;
+}
+
 interface TransactionModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: NewTransactionData) => void;
+  transaction?: EditableTransaction | null;
 }
 
 interface Category {
@@ -35,8 +45,9 @@ interface Category {
   name: string;
 }
 
-export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClose, onSubmit }) => {
+export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClose, onSubmit, transaction }) => {
   const today = new Date().toISOString().split('T')[0];
+  const isEditing = Boolean(transaction);
 
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [description, setDescription] = useState('');
@@ -47,26 +58,38 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
+  // Busca as categorias e só então decide o valor do campo: pré-preenche a
+  // partir de "transaction" ao editar, ou reseta para criação. Fica tudo num
+  // único efeito para não haver corrida entre o carregamento e o preenchimento.
   useEffect(() => {
-    if (open) {
-      loadCategories();
+    if (!open) return;
+
+    if (transaction) {
+      setType(transaction.type);
+      setDescription(transaction.description);
+      setAmount(String(transaction.amount));
+      setDate(transaction.date.split('T')[0]);
+    } else {
+      setType('EXPENSE');
+      setDescription('');
+      setAmount('');
+      setDate(today);
     }
-  }, [open]);
+
+    loadCategories();
+  }, [open, transaction]);
 
   const loadCategories = async () => {
     try {
       setIsLoadingCategories(true);
       const response = await api.get('/categories');
       setCategories(response.data);
-
-      if (response.data.length > 0 && !category) {
-        setCategory(response.data[0].id);
-      }
+      setCategory(transaction?.categoryId || response.data[0]?.id || '');
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
       const fallbackCategories = [{ id: 'fallback', name: 'Outros' }];
       setCategories(fallbackCategories);
-      setCategory('Outros');
+      setCategory('fallback');
     } finally {
       setIsLoadingCategories(false);
     }
@@ -90,17 +113,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       date,
     });
 
-    setDescription('');
-    setAmount('');
-    if (categories.length > 0) setCategory(categories[0].name);
-    setDate(today);
-    setType('EXPENSE');
     onClose();
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 3, p: 1 } } }}>
-      <DialogTitle sx={{ fontWeight: 700 }}>Novo Lançamento</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 700 }}>{isEditing ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle>
       <Box component="form" onSubmit={handleSubmit}>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
           <ToggleButtonGroup
