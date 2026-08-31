@@ -80,7 +80,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     api
       .get('/transactions')
-      .then((res) => setCategoryTransactions(res.data))
+      .then((res) => setCategoryTransactions(res.data.data))
       .catch((error) => console.error('Erro ao buscar transações para o gráfico de categorias', error));
   }, []);
 
@@ -103,7 +103,7 @@ export const Dashboard: React.FC = () => {
         api.get('/debtors/summary', { params: periodParams }),
       ]);
 
-      setPeriodTransactions(transactionsRes.data);
+      setPeriodTransactions(transactionsRes.data.data);
       setDebtorsSummary(debtorsSummaryRes.data);
 
       if (viewMode === 'monthly') {
