@@ -79,10 +79,31 @@ export async function createDebtor(req: Request, res: Response) {
   }
 }
 
+// Com apenas "year" filtra o ano inteiro; com "month" e "year" filtra o mês
+// específico. Mesmo padrão usado em transaction.controller.ts.
+function buildDateFilter(month: unknown, year: unknown) {
+  if (!year) return {};
+
+  const parsedYear = parseInt(String(year), 10);
+  const startDate = month
+    ? new Date(parsedYear, parseInt(String(month), 10) - 1, 1)
+    : new Date(parsedYear, 0, 1);
+  const endDate = month
+    ? new Date(parsedYear, parseInt(String(month), 10), 0, 23, 59, 59, 999)
+    : new Date(parsedYear, 11, 31, 23, 59, 59, 999);
+
+  return {
+    date: {
+      gte: startDate,
+      lte: endDate,
+    },
+  };
+}
+
 export async function listDebtors(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { status } = req.query;
+    const { status, month, year } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -97,6 +118,7 @@ export async function listDebtors(req: Request, res: Response) {
       where: {
         userId,
         ...statusFilter,
+        ...buildDateFilter(month, year),
       },
       include: {
         transaction: {
@@ -122,13 +144,17 @@ export async function listDebtors(req: Request, res: Response) {
 export async function getDebtorsSummary(req: Request, res: Response) {
   try {
     const userId = req.userId;
+    const { month, year } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
     const debtors = await prisma.debtor.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...buildDateFilter(month, year),
+      },
     });
 
     let totalPending = 0;
