@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { buildDateFilter } from '../lib/dateFilter.js';
 
 export async function createDebtor(req: Request, res: Response) {
   try {
@@ -77,27 +78,6 @@ export async function createDebtor(req: Request, res: Response) {
     console.error('Erro ao criar registro de devedor:', error);
     return res.status(500).json({ error: 'Erro interno ao processar cobrança.' });
   }
-}
-
-// Com apenas "year" filtra o ano inteiro; com "month" e "year" filtra o mês
-// específico. Mesmo padrão usado em transaction.controller.ts.
-function buildDateFilter(month: unknown, year: unknown) {
-  if (!year) return {};
-
-  const parsedYear = parseInt(String(year), 10);
-  const startDate = month
-    ? new Date(parsedYear, parseInt(String(month), 10) - 1, 1)
-    : new Date(parsedYear, 0, 1);
-  const endDate = month
-    ? new Date(parsedYear, parseInt(String(month), 10), 0, 23, 59, 59, 999)
-    : new Date(parsedYear, 11, 31, 23, 59, 59, 999);
-
-  return {
-    date: {
-      gte: startDate,
-      lte: endDate,
-    },
-  };
 }
 
 export async function listDebtors(req: Request, res: Response) {
