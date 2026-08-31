@@ -1,5 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, useTheme, Grid, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, LinearProgress } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Card, CardContent, Typography, useTheme, Grid, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  LabelList,
+} from 'recharts';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
@@ -9,6 +20,7 @@ import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlin
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { api } from '../../services/api';
+import { usePeriod } from '../../contexts/PeriodContext';
 
 interface Summary {
   income: number;
@@ -33,9 +45,25 @@ interface Transaction {
   date: string;
 }
 
+interface MonthSummary {
+  month: number;
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+}
+
+const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// Limite de fatias exibidas no gráfico de categorias antes de agrupar o
+// restante em "Outros", evitando um eixo Y com dezenas de barras.
+const MAX_CATEGORY_BARS = 7;
+
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
+  const { month, year, viewMode } = usePeriod();
+
   const [summary, setSummary] = useState<Summary>({ income: 0, expense: 0, total: 0 });
+  const [annualSummary, setAnnualSummary] = useState<MonthSummary[]>([]);
   const [debtorsSummary, setDebtorsSummary] = useState<DebtorSummary>({
     totalPending: 0,
     totalCharged: 0,
@@ -43,36 +71,59 @@ export const Dashboard: React.FC = () => {
     totalToReceive: 0,
     totalOverall: 0,
   });
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [periodTransactions, setPeriodTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
-      const [summaryRes, debtorsSummaryRes, transactionsRes] = await Promise.all([
-        api.get('/transactions/summary'),
+      setLoading(true);
+
+      // O gráfico de evolução é sempre anual, então busca o ano do período
+      // atual independentemente do viewMode selecionado.
+      const annualRes = await api.get('/transactions/annual-summary', { params: { year } });
+      const months: MonthSummary[] = annualRes.data.months;
+      setAnnualSummary(months);
+
+      // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
+      // inteiro (o backend aceita "year" sozinho para esse caso).
+      const periodParams = viewMode === 'monthly' ? { month, year } : { year };
+
+      const [transactionsRes, debtorsSummaryRes] = await Promise.all([
+        api.get('/transactions', { params: periodParams }),
         api.get('/debtors/summary'),
-        api.get('/transactions'),
       ]);
 
-      const { totalIncome, totalExpense, balance } = summaryRes.data;
-      setSummary({
-        income: totalIncome,
-        expense: totalExpense,
-        total: balance,
-      });
-
+      setPeriodTransactions(transactionsRes.data);
       setDebtorsSummary(debtorsSummaryRes.data);
-      setRecentTransactions(transactionsRes.data);
+
+      if (viewMode === 'monthly') {
+        const summaryRes = await api.get('/transactions/summary', { params: { month, year } });
+        const { totalIncome, totalExpense, balance } = summaryRes.data;
+        setSummary({ income: totalIncome, expense: totalExpense, total: balance });
+      } else {
+        const yearTotals = months.reduce(
+          (acc, m) => ({
+            income: acc.income + m.totalIncome,
+            expense: acc.expense + m.totalExpense,
+          }),
+          { income: 0, expense: 0 }
+        );
+        setSummary({
+          income: yearTotals.income,
+          expense: yearTotals.expense,
+          total: yearTotals.income - yearTotals.expense,
+        });
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [month, year, viewMode]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -81,14 +132,22 @@ export const Dashboard: React.FC = () => {
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
-    const datePart = dateString.split('T')[0];
-    const [year, month, day] = datePart.split('-');
-    return `${day}/${month}/${year}`;
+  const formatCurrencyCompact = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      notation: 'compact',
+    }).format(value);
   };
 
-  // Calcular distribuição de gastos por categoria
-  const expenses = recentTransactions.filter(tx => tx.type === 'EXPENSE');
+  const formatDate = (dateString: string) => {
+    const datePart = dateString.split('T')[0];
+    const [y, m, d] = datePart.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  // Calcular distribuição de gastos por categoria no período selecionado
+  const expenses = periodTransactions.filter(tx => tx.type === 'EXPENSE');
   const totalExpenses = expenses.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
   const categoryMap: { [name: string]: number } = {};
@@ -97,17 +156,41 @@ export const Dashboard: React.FC = () => {
     categoryMap[catName] = (categoryMap[catName] || 0) + Number(tx.amount);
   });
 
-  const categoryBreakdown = Object.entries(categoryMap).map(([name, amount]) => ({
-    name,
-    amount,
-    percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
-  })).sort((a, b) => b.amount - a.amount);
+  const sortedCategories = Object.entries(categoryMap)
+    .map(([name, amount]) => ({
+      name,
+      amount,
+      percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  // Mantém o gráfico legível agrupando o excedente em "Outros" em vez de
+  // gerar uma barra por categoria indefinidamente.
+  const categoryBreakdown =
+    sortedCategories.length > MAX_CATEGORY_BARS
+      ? [
+          ...sortedCategories.slice(0, MAX_CATEGORY_BARS),
+          {
+            name: 'Outros',
+            amount: sortedCategories.slice(MAX_CATEGORY_BARS).reduce((sum, item) => sum + item.amount, 0),
+            percentage: sortedCategories.slice(MAX_CATEGORY_BARS).reduce((sum, item) => sum + item.percentage, 0),
+          },
+        ]
+      : sortedCategories;
+
+  const evolutionData = annualSummary.map((m) => ({
+    monthLabel: MONTH_LABELS[m.month - 1],
+    Receita: m.totalIncome,
+    Despesa: m.totalExpense,
+  }));
+
+  const periodLabel = viewMode === 'monthly' ? `${MONTH_LABELS[month - 1]}/${year}` : `${year}`;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <Box>
         <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
-          Visão Geral
+          Visão Geral · {periodLabel}
         </Typography>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -116,7 +199,7 @@ export const Dashboard: React.FC = () => {
         ) : summary.income === 0 && summary.expense === 0 ? (
           <Box sx={{ py: 3, textAlign: 'center', border: `1px dashed ${theme.palette.divider}`, borderRadius: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              Nenhum lançamento financeiro encontrado ainda.
+              Nenhum lançamento financeiro encontrado neste período.
             </Typography>
           </Box>
         ) : (
@@ -183,6 +266,40 @@ export const Dashboard: React.FC = () => {
 
       {!loading && (
         <>
+          {/* Evolução Anual */}
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
+              Evolução em {year}
+            </Typography>
+            <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 3 }}>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={evolutionData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }} barGap={4}>
+                  <CartesianGrid vertical={false} stroke={theme.palette.divider} />
+                  <XAxis
+                    dataKey="monthLabel"
+                    axisLine={{ stroke: theme.palette.divider }}
+                    tickLine={false}
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                    tickFormatter={formatCurrencyCompact}
+                    width={64}
+                  />
+                  <Tooltip
+                    formatter={(value) => formatCurrency(Number(value))}
+                    contentStyle={{ borderRadius: 8, borderColor: theme.palette.divider }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 13 }} />
+                  <Bar dataKey="Receita" fill={theme.palette.success.main} radius={[4, 4, 0, 0]} maxBarSize={20} />
+                  <Bar dataKey="Despesa" fill={theme.palette.error.main} radius={[4, 4, 0, 0]} maxBarSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          </Box>
+
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
               Cobranças (Devedores)
@@ -253,10 +370,10 @@ export const Dashboard: React.FC = () => {
               <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
                 Últimos Lançamentos
               </Typography>
-              {recentTransactions.length === 0 ? (
+              {periodTransactions.length === 0 ? (
                 <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 4, textAlign: 'center' }}>
                   <Typography variant="body2" color="text.secondary">
-                    Nenhum lançamento registrado.
+                    Nenhum lançamento registrado neste período.
                   </Typography>
                 </Card>
               ) : (
@@ -272,7 +389,7 @@ export const Dashboard: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {recentTransactions.slice(0, 5).map((tx) => {
+                        {periodTransactions.slice(0, 5).map((tx) => {
                           const isIncome = tx.type === 'INCOME';
                           return (
                             <TableRow key={tx.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
@@ -349,33 +466,39 @@ export const Dashboard: React.FC = () => {
                 </Card>
               ) : (
                 <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 3 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                    {categoryBreakdown.map((item) => (
-                      <Box key={item.name}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                            {item.name}
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                            {formatCurrency(item.amount)} ({item.percentage.toFixed(0)}%)
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={item.percentage}
-                          sx={{
-                            height: 8,
-                            borderRadius: 4,
-                            bgcolor: 'action.hover',
-                            '& .MuiLinearProgress-bar': {
-                              borderRadius: 4,
-                              bgcolor: 'primary.main',
-                            },
-                          }}
+                  <ResponsiveContainer width="100%" height={Math.max(220, categoryBreakdown.length * 44)}>
+                    <BarChart
+                      data={categoryBreakdown}
+                      layout="vertical"
+                      margin={{ top: 0, right: 48, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid horizontal={false} stroke={theme.palette.divider} />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        width={110}
+                        tick={{ fill: theme.palette.text.primary, fontSize: 13 }}
+                      />
+                      <Tooltip
+                        formatter={(value, _name, item) => [
+                          `${formatCurrency(Number(value))} (${item.payload.percentage.toFixed(0)}%)`,
+                          'Gasto',
+                        ]}
+                        contentStyle={{ borderRadius: 8, borderColor: theme.palette.divider }}
+                      />
+                      <Bar dataKey="amount" fill={theme.palette.primary.main} radius={[0, 4, 4, 0]} maxBarSize={22}>
+                        <LabelList
+                          dataKey="amount"
+                          position="right"
+                          formatter={(value) => formatCurrency(Number(value))}
+                          style={{ fill: theme.palette.text.secondary, fontSize: 12 }}
                         />
-                      </Box>
-                    ))}
-                  </Box>
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </Card>
               )}
             </Grid>
