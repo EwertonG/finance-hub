@@ -31,6 +31,10 @@ export const Topbar: React.FC = () => {
     description: 'Plataforma de gestão financeira.',
   };
 
+  // Categorias não têm recorte temporal, então o seletor de período não
+  // se aplica a essa tela.
+  const showPeriodSelector = location.pathname !== '/categories';
+
   return (
     <Box
       sx={{
@@ -51,9 +55,11 @@ export const Topbar: React.FC = () => {
           {currentHeader.description}
         </Typography>
       </Box>
-      <Box>
-        <PeriodSelector />
-      </Box>
+      {showPeriodSelector && (
+        <Box>
+          <PeriodSelector />
+        </Box>
+      )}
     </Box>
   );
 };
