@@ -153,6 +153,66 @@ export async function getTransactionSummary(req: Request, res: Response) {
   }
 }
 
+export async function getAnnualSummary(req: Request, res: Response) {
+  try {
+    const userId = req.userId;
+    const { year } = req.query;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuário não autenticado.' });
+    }
+
+    const currentYear = year ? parseInt(String(year), 10) : new Date().getFullYear();
+
+    const startDate = new Date(currentYear, 0, 1);
+    const endDate = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    // Inicializa os 12 meses com totais zerados para que o gráfico do
+    // frontend sempre receba um array completo, mesmo sem lançamentos.
+    const months = Array.from({ length: 12 }, (_, index) => ({
+      month: index + 1,
+      totalIncome: 0,
+      totalExpense: 0,
+      balance: 0,
+    }));
+
+    transactions.forEach((tx) => {
+      const monthIndex = tx.date.getMonth();
+      const amountNumber = Number(tx.amount);
+
+      if (tx.type === 'INCOME') {
+        months[monthIndex].totalIncome += amountNumber;
+      } else {
+        months[monthIndex].totalExpense += amountNumber;
+      }
+    });
+
+    months.forEach((m) => {
+      m.totalIncome = Number(m.totalIncome.toFixed(2));
+      m.totalExpense = Number(m.totalExpense.toFixed(2));
+      m.balance = Number((m.totalIncome - m.totalExpense).toFixed(2));
+    });
+
+    return res.json({
+      year: currentYear,
+      months,
+    });
+  } catch (error) {
+    console.error('Erro ao calcular resumo anual:', error);
+    return res.status(500).json({ error: 'Erro interno ao calcular resumo anual.' });
+  }
+}
+
 export async function updateTransaction(req: Request, res: Response) {
   try {
     const userId = req.userId;
