@@ -46,23 +46,26 @@ export const Categories = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const { notify } = useNotification();
 
+  // Otimista: some da lista e fecha o diálogo na hora; só volta a consultar
+  // o servidor se a exclusão falhar.
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
+    const idToDelete = deleteId;
+    const previousCategories = categories;
+
+    setCategories((prev) => prev.filter((c) => c.id !== idToDelete));
+    setDeleteId(null);
+
     try {
-      setIsDeleting(true);
-      await api.delete(`/categories/${deleteId}`);
+      await api.delete(`/categories/${idToDelete}`);
       notify('Categoria excluída com sucesso!', 'success');
-      loadCategories();
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
+      setCategories(previousCategories);
       notify('Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.', 'error');
-    } finally {
-      setIsDeleting(false);
-      setDeleteId(null);
     }
   };
 
@@ -94,13 +97,17 @@ export const Categories = () => {
     setIsModalOpen(false);
   };
 
-  const handleCategorySaved = () => {
-    loadCategories();
-    const successMessage = selectedCategory 
-      ? 'Categoria atualizada com sucesso!' 
-      : 'Categoria criada com sucesso!';
-      
-    notify(successMessage, 'success');
+  // Usa a resposta da própria chamada de criar/editar pra atualizar a lista
+  // local, sem precisar buscar tudo de novo no servidor.
+  const handleCategorySaved = (savedCategory: Category) => {
+    setCategories((prev) => {
+      const exists = prev.some((c) => c.id === savedCategory.id);
+      return exists
+        ? prev.map((c) => (c.id === savedCategory.id ? savedCategory : c))
+        : [...prev, savedCategory];
+    });
+
+    notify(selectedCategory ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!', 'success');
   };
 
   const handleEditCategory = (category: Category) => {
@@ -219,7 +226,7 @@ export const Categories = () => {
       <CategoryModal
         open={isModalOpen}
         onClose={handleCloseModal}
-        onCreated={handleCategorySaved}
+        onSaved={handleCategorySaved}
         category={selectedCategory}
       />
 
@@ -229,7 +236,6 @@ export const Categories = () => {
         message="Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita."
         onClose={() => setDeleteId(null)}
         onConfirm={handleConfirmDelete}
-        loading={isDeleting}
       />
     </Box>
   );
