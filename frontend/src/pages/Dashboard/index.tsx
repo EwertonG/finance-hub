@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Card, CardContent, Typography, useTheme, Grid, Skeleton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
+import { Box, Card, CardContent, Typography, useTheme, Grid, Skeleton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, LinearProgress } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   ResponsiveContainer,
   BarChart,
@@ -21,6 +23,8 @@ import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import PieChartOutlineRoundedIcon from '@mui/icons-material/PieChartOutlineRounded';
+import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
+import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import { api } from '../../services/api';
 import { usePeriod } from '../../contexts/PeriodContext';
 import { EmptyState } from '../../components/EmptyState';
@@ -56,6 +60,20 @@ interface MonthSummary {
   balance: number;
 }
 
+interface GoalSummary {
+  id: string;
+  name: string;
+  color: string;
+  progress: number;
+  completed: boolean;
+}
+
+interface SubscriptionSummary {
+  active: boolean;
+  amount: number;
+  type: 'INCOME' | 'EXPENSE';
+}
+
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 // Limite de fatias exibidas no gráfico de categorias antes de agrupar o
@@ -77,11 +95,43 @@ const StatCardSkeleton: React.FC = () => {
   );
 };
 
+// Compara o valor atual com o do período anterior. "goodWhenUp" define se
+// subir é uma boa notícia (Receita/Saldo) ou ruim (Despesa).
+const DeltaBadge: React.FC<{ current: number; previous: number; goodWhenUp: boolean }> = ({
+  current,
+  previous,
+  goodWhenUp,
+}) => {
+  if (!previous) return null;
+
+  const diffPct = ((current - previous) / Math.abs(previous)) * 100;
+  if (Math.abs(diffPct) < 0.5) return null;
+
+  const isUp = diffPct > 0;
+  const isGood = isUp === goodWhenUp;
+  const Icon = isUp ? ArrowUpwardRoundedIcon : ArrowDownwardRoundedIcon;
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', color: isGood ? 'success.main' : 'error.main' }}>
+        <Icon sx={{ fontSize: 14 }} />
+        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+          {Math.abs(diffPct).toFixed(0)}%
+        </Typography>
+      </Box>
+      <Typography variant="caption" color="text.secondary">
+        vs período anterior
+      </Typography>
+    </Box>
+  );
+};
+
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
   const { month, year, viewMode } = usePeriod();
 
   const [summary, setSummary] = useState<Summary>({ income: 0, expense: 0, total: 0 });
+  const [previousSummary, setPreviousSummary] = useState<Summary>({ income: 0, expense: 0, total: 0 });
   const [annualSummary, setAnnualSummary] = useState<MonthSummary[]>([]);
   const [debtorsSummary, setDebtorsSummary] = useState<DebtorSummary>({
     totalPending: 0,
@@ -95,14 +145,32 @@ export const Dashboard: React.FC = () => {
   const [categoryLoading, setCategoryLoading] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  // Gastos por categoria não acompanham o período selecionado (visão sempre
-  // geral), então são buscados uma única vez, fora do fluxo de recarga por período.
+  const [goals, setGoals] = useState<GoalSummary[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(true);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionSummary[]>([]);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+
+  // Gastos por categoria, metas e assinaturas não acompanham o período
+  // selecionado (visão sempre geral), então são buscados uma única vez, fora
+  // do fluxo de recarga por período.
   useEffect(() => {
     api
       .get('/transactions')
       .then((res) => setCategoryTransactions(res.data.data))
       .catch((error) => console.error('Erro ao buscar transações para o gráfico de categorias', error))
       .finally(() => setCategoryLoading(false));
+
+    api
+      .get('/goals')
+      .then((res) => setGoals(res.data))
+      .catch((error) => console.error('Erro ao buscar metas', error))
+      .finally(() => setGoalsLoading(false));
+
+    api
+      .get('/recurrences', { params: { kind: 'SUBSCRIPTION' } })
+      .then((res) => setSubscriptions(res.data))
+      .catch((error) => console.error('Erro ao buscar assinaturas', error))
+      .finally(() => setSubscriptionsLoading(false));
   }, []);
 
   const loadDashboardData = useCallback(async () => {
@@ -110,9 +178,15 @@ export const Dashboard: React.FC = () => {
       setLoading(true);
 
       // O gráfico de evolução é sempre anual, então busca o ano do período
-      // atual independentemente do viewMode selecionado.
-      const annualRes = await api.get('/transactions/annual-summary', { params: { year } });
+      // atual independentemente do viewMode selecionado. Também busca o ano
+      // anterior, necessário para a comparação "vs período anterior" (cobre
+      // o caso de janeiro comparando com dezembro do ano anterior).
+      const [annualRes, previousAnnualRes] = await Promise.all([
+        api.get('/transactions/annual-summary', { params: { year } }),
+        api.get('/transactions/annual-summary', { params: { year: year - 1 } }),
+      ]);
       const months: MonthSummary[] = annualRes.data.months;
+      const previousMonths: MonthSummary[] = previousAnnualRes.data.months;
       setAnnualSummary(months);
 
       // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
@@ -143,6 +217,30 @@ export const Dashboard: React.FC = () => {
           income: yearTotals.income,
           expense: yearTotals.expense,
           total: yearTotals.income - yearTotals.expense,
+        });
+      }
+
+      // Período anterior: mês anterior (ou dezembro do ano anterior, se
+      // janeiro) no modo mensal; ano anterior inteiro no modo anual.
+      if (viewMode === 'monthly') {
+        const previousMonthData = month === 1 ? previousMonths[11] : months[month - 2];
+        setPreviousSummary({
+          income: previousMonthData.totalIncome,
+          expense: previousMonthData.totalExpense,
+          total: previousMonthData.balance,
+        });
+      } else {
+        const previousYearTotals = previousMonths.reduce(
+          (acc, m) => ({
+            income: acc.income + m.totalIncome,
+            expense: acc.expense + m.totalExpense,
+          }),
+          { income: 0, expense: 0 }
+        );
+        setPreviousSummary({
+          income: previousYearTotals.income,
+          expense: previousYearTotals.expense,
+          total: previousYearTotals.income - previousYearTotals.expense,
         });
       }
     } catch (error) {
@@ -217,6 +315,12 @@ export const Dashboard: React.FC = () => {
 
   const periodLabel = viewMode === 'monthly' ? `${MONTH_LABELS[month - 1]}/${year}` : `${year}`;
 
+  const goalsToShow = goals.slice(0, 3);
+  const activeSubscriptions = subscriptions.filter((s) => s.active);
+  const monthlySubscriptionTotal = activeSubscriptions
+    .filter((s) => s.type === 'EXPENSE')
+    .reduce((sum, s) => sum + Number(s.amount), 0);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <Box>
@@ -249,6 +353,7 @@ export const Dashboard: React.FC = () => {
                     <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
                       {formatCurrency(summary.income)}
                     </Typography>
+                    <DeltaBadge current={summary.income} previous={previousSummary.income} goodWhenUp />
                   </Box>
                 </CardContent>
               </Card>
@@ -268,6 +373,7 @@ export const Dashboard: React.FC = () => {
                     <Typography variant="h6" sx={{ fontWeight: 700, color: 'error.main' }}>
                       {formatCurrency(summary.expense)}
                     </Typography>
+                    <DeltaBadge current={summary.expense} previous={previousSummary.expense} goodWhenUp={false} />
                   </Box>
                 </CardContent>
               </Card>
@@ -287,6 +393,7 @@ export const Dashboard: React.FC = () => {
                     <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
                       {formatCurrency(summary.total)}
                     </Typography>
+                    <DeltaBadge current={summary.total} previous={previousSummary.total} goodWhenUp />
                   </Box>
                 </CardContent>
               </Card>
@@ -405,6 +512,87 @@ export const Dashboard: React.FC = () => {
                   </Grid>
                 </>
               )}
+            </Grid>
+          </Box>
+
+          {/* Metas & Assinaturas */}
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
+              Metas & Assinaturas
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 7 }}>
+                <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 3, height: '100%' }}>
+                  {goalsLoading ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Skeleton variant="rounded" height={40} />
+                      <Skeleton variant="rounded" height={40} />
+                    </Box>
+                  ) : goalsToShow.length === 0 ? (
+                    <EmptyState variant="plain" icon={<SavingsRoundedIcon />} message="Nenhuma meta cadastrada ainda." />
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {goalsToShow.map((goal) => (
+                        <Box key={goal.id}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {goal.name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: goal.color }}>
+                              {goal.progress.toFixed(0)}%
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={goal.progress}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              bgcolor: alpha(goal.color, 0.15),
+                              '& .MuiLinearProgress-bar': { borderRadius: 4, bgcolor: goal.color },
+                            }}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  <Box sx={{ mt: 2, textAlign: 'right' }}>
+                    <Typography
+                      component={RouterLink}
+                      to="/goals"
+                      variant="caption"
+                      sx={{ fontWeight: 600, color: 'primary.main', textDecoration: 'none' }}
+                    >
+                      Ver todas as metas →
+                    </Typography>
+                  </Box>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 5 }}>
+                {subscriptionsLoading ? (
+                  <StatCardSkeleton />
+                ) : (
+                  <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, height: '100%' }}>
+                    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
+                      <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.dark', display: 'flex' }}>
+                        <AutorenewRoundedIcon />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          Assinaturas Ativas
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                          {activeSubscriptions.length}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatCurrency(monthlySubscriptionTotal)}/mês comprometido
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
+              </Grid>
             </Grid>
           </Box>
 
