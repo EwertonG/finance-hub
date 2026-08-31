@@ -57,7 +57,7 @@ export async function createTransaction(req: Request, res: Response) {
 export async function listTransactions(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { month, year, type, categoryId } = req.query;
+    const { month, year, type, categoryId, page, limit } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -83,22 +83,35 @@ export async function listTransactions(req: Request, res: Response) {
       };
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        ...dateFilter,
-        ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type } : {}),
-        ...(categoryId ? { categoryId: String(categoryId) } : {}),
-      },
-      include: {
-        category: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+    const where = {
+      userId,
+      ...dateFilter,
+      ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
+      ...(categoryId ? { categoryId: String(categoryId) } : {}),
+    };
 
-    return res.json(transactions);
+    // "limit" ausente = sem paginação (usado pelo Dashboard, que precisa do
+    // conjunto inteiro para os gráficos).
+    const parsedLimit = limit ? parseInt(String(limit), 10) : undefined;
+    const parsedPage = Math.max(1, page ? parseInt(String(page), 10) : 1);
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: { category: true },
+        orderBy: { date: 'desc' },
+        ...(parsedLimit ? { skip: (parsedPage - 1) * parsedLimit, take: parsedLimit } : {}),
+      }),
+      prisma.transaction.count({ where }),
+    ]);
+
+    return res.json({
+      data: transactions,
+      total,
+      page: parsedLimit ? parsedPage : 1,
+      limit: parsedLimit ?? null,
+      totalPages: parsedLimit ? Math.ceil(total / parsedLimit) : 1,
+    });
   } catch (error) {
     console.error('Erro ao listar transações:', error);
     return res.status(500).json({ error: 'Erro interno ao listar lançamentos.' });
