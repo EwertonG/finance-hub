@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Pagination,
 } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -76,6 +77,8 @@ const STATUS_CONFIG = {
   },
 };
 
+const PAGE_SIZE = 10;
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
@@ -105,6 +108,9 @@ export const Debtors: React.FC = () => {
   const { notify } = useNotification();
   const { month, year, viewMode } = usePeriod();
 
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -116,22 +122,31 @@ export const Debtors: React.FC = () => {
           params: {
             ...periodParams,
             ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
+            page,
+            limit: PAGE_SIZE,
           },
         }),
         api.get("/debtors/summary", { params: periodParams }),
       ]);
-      setDebtors(debtorsRes.data);
+      setDebtors(debtorsRes.data.data);
+      setTotalPages(debtorsRes.data.totalPages);
       setSummary(summaryRes.data);
     } catch {
       notify("Erro ao carregar devedores. Tente novamente.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, month, year, viewMode]);
+  }, [statusFilter, month, year, viewMode, page]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Muda filtro ou período reseta a página, que pode não existir mais no
+  // novo recorte.
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, month, year, viewMode]);
 
   const handleCreate = async (data: NewDebtorData) => {
     try {
@@ -416,6 +431,18 @@ export const Debtors: React.FC = () => {
             </TableContainer>
           </CardContent>
         </Card>
+      )}
+
+      {!isLoading && totalPages > 1 && (
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            shape="rounded"
+          />
+        </Box>
       )}
 
       {/* Debtor Creation Modal */}

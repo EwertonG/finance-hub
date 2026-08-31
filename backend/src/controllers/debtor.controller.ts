@@ -103,7 +103,7 @@ function buildDateFilter(month: unknown, year: unknown) {
 export async function listDebtors(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { status, month, year } = req.query;
+    const { status, month, year, page, limit } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -114,27 +114,42 @@ export async function listDebtors(req: Request, res: Response) {
       ? { status: String(status) as any }
       : {};
 
-    const debtors = await prisma.debtor.findMany({
-      where: {
-        userId,
-        ...statusFilter,
-        ...buildDateFilter(month, year),
-      },
-      include: {
-        transaction: {
-          select: {
-            id: true,
-            description: true,
-            amount: true,
+    const where = {
+      userId,
+      ...statusFilter,
+      ...buildDateFilter(month, year),
+    };
+
+    const parsedLimit = limit ? parseInt(String(limit), 10) : undefined;
+    const parsedPage = Math.max(1, page ? parseInt(String(page), 10) : 1);
+
+    const [debtors, total] = await Promise.all([
+      prisma.debtor.findMany({
+        where,
+        include: {
+          transaction: {
+            select: {
+              id: true,
+              description: true,
+              amount: true,
+            },
           },
         },
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+        orderBy: {
+          date: 'desc',
+        },
+        ...(parsedLimit ? { skip: (parsedPage - 1) * parsedLimit, take: parsedLimit } : {}),
+      }),
+      prisma.debtor.count({ where }),
+    ]);
 
-    return res.json(debtors);
+    return res.json({
+      data: debtors,
+      total,
+      page: parsedLimit ? parsedPage : 1,
+      limit: parsedLimit ?? null,
+      totalPages: parsedLimit ? Math.ceil(total / parsedLimit) : 1,
+    });
   } catch (error) {
     console.error('Erro ao listar devedores:', error);
     return res.status(500).json({ error: 'Erro interno ao listar devedores.' });
