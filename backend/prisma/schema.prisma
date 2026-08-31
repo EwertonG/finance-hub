@@ -48,6 +48,7 @@ model Category {
   id           String        @id @default(uuid())
   name         String
   color        String        @default("#6B7280")
+  icon         String        @default("MoreHorizRounded")
   type         TransactionType
   userId       String        @map("user_id")
   createdAt    DateTime      @default(now()) @map("created_at")

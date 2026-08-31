@@ -9,17 +9,21 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Typography,
 } from '@mui/material';
 
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 
 import { api } from '../../../services/api';
+import { ACCENT_COLORS } from '../../../constants/accentColors';
+import { CATEGORY_ICONS, CATEGORY_ICON_KEYS, DEFAULT_CATEGORY_ICON } from '../../../constants/categoryIcons';
 
 export interface Category {
   id: string;
   name: string;
   color: string;
+  icon: string;
   type: 'INCOME' | 'EXPENSE';
   createdAt: string;
 }
@@ -31,11 +35,6 @@ interface CategoryModalProps {
 
   category?: Category | null;
 }
-
-const CATEGORY_COLORS = {
-  INCOME: '#10B981',
-  EXPENSE: '#EF4444',
-};
 
 export const CategoryModal: React.FC<CategoryModalProps> = ({
   open,
@@ -49,6 +48,9 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
     'EXPENSE',
   );
 
+  const [color, setColor] = useState(ACCENT_COLORS[0]);
+  const [icon, setIcon] = useState(DEFAULT_CATEGORY_ICON);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -59,9 +61,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
     if (category) {
       setName(category.name);
       setType(category.type);
+      setColor(category.color);
+      setIcon(category.icon);
     } else {
       setName('');
       setType('EXPENSE');
+      setColor(ACCENT_COLORS[0]);
+      setIcon(DEFAULT_CATEGORY_ICON);
     }
 
     setIsSubmitting(false);
@@ -77,11 +83,10 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      const color = CATEGORY_COLORS[type];
-
       const data = {
         name: name.trim(),
         color,
+        icon,
         type,
       };
 
@@ -219,6 +224,65 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 Receita
               </ToggleButton>
             </ToggleButtonGroup>
+          </Box>
+
+          {/* Ícone da categoria */}
+
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
+              Ícone
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {CATEGORY_ICON_KEYS.map((key) => {
+                const IconComponent = CATEGORY_ICONS[key];
+                const isSelected = icon === key;
+                return (
+                  <Box
+                    key={key}
+                    onClick={() => setIcon(key)}
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      bgcolor: isSelected ? color : 'action.hover',
+                      color: isSelected ? '#fff' : 'text.secondary',
+                      transition: 'background-color 0.15s, color 0.15s',
+                    }}
+                  >
+                    <IconComponent fontSize="small" />
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+
+          {/* Cor da categoria */}
+
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
+              Cor
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {ACCENT_COLORS.map((c) => (
+                <Box
+                  key={c}
+                  onClick={() => setColor(c)}
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    bgcolor: c,
+                    cursor: 'pointer',
+                    outline: color === c ? `2px solid ${c}` : 'none',
+                    outlineOffset: 2,
+                  }}
+                />
+              ))}
+            </Box>
           </Box>
         </DialogContent>
 

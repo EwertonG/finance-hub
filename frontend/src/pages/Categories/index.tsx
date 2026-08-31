@@ -18,42 +18,22 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 
-import RestaurantRoundedIcon from '@mui/icons-material/RestaurantRounded';
-import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded';
-import DirectionsBusRoundedIcon from '@mui/icons-material/DirectionsBusRounded';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import SportsEsportsRoundedIcon from '@mui/icons-material/SportsEsportsRounded';
-import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded';
-import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
-import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
-
 import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 
 import { CategoryModal } from './components/CategoryModal';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { getCategoryIconComponent } from '../../constants/categoryIcons';
 
 interface Category {
   id: string;
   name: string;
   color: string;
+  icon: string;
   type: 'INCOME' | 'EXPENSE';
   createdAt: string;
 }
-
-const getCategoryIcon = (categoryName: string) => {
-  const normalizedName = categoryName.trim().toLowerCase();
-  if (normalizedName.includes('aliment') || normalizedName.includes('comida') || normalizedName.includes('restaurante')) return <RestaurantRoundedIcon />;
-  if (normalizedName.includes('supermercado') || normalizedName.includes('mercado') || normalizedName.includes('compras')) return <ShoppingCartRoundedIcon />;
-  if (normalizedName.includes('transporte') || normalizedName.includes('combustível') || normalizedName.includes('combustivel') || normalizedName.includes('ônibus') || normalizedName.includes('onibus') || normalizedName.includes('uber')) return <DirectionsBusRoundedIcon />;
-  if (normalizedName.includes('moradia') || normalizedName.includes('casa') || normalizedName.includes('aluguel')) return <HomeRoundedIcon />;
-  if (normalizedName.includes('lazer') || normalizedName.includes('jogo') || normalizedName.includes('jogos') || normalizedName.includes('entretenimento')) return <SportsEsportsRoundedIcon />;
-  if (normalizedName.includes('salário') || normalizedName.includes('salario') || normalizedName.includes('trabalho') || normalizedName.includes('emprego')) return <BusinessCenterRoundedIcon />;
-  if (normalizedName.includes('investimento') || normalizedName.includes('investimentos') || normalizedName.includes('poupança') || normalizedName.includes('poupanca')) return <SavingsRoundedIcon />;
-  
-  return <MoreHorizRoundedIcon />;
-};
 
 export const Categories = () => {
   const theme = useTheme();
@@ -177,6 +157,7 @@ export const Categories = () => {
           <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
             {categories.map((category, index) => {
               const isIncome = category.type === 'INCOME';
+              const CategoryIcon = getCategoryIconComponent(category.icon);
 
               return (
                 <Box
@@ -195,7 +176,7 @@ export const Categories = () => {
                       flexShrink: 0, '& svg': { fontSize: 25 },
                     }}
                   >
-                    {getCategoryIcon(category.name)}
+                    <CategoryIcon />
                   </Box>
 
                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
