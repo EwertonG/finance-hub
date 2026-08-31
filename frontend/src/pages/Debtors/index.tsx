@@ -38,6 +38,7 @@ import { DebtorModal } from "./components/DebtorModal";
 import type { NewDebtorData } from "./components/DebtorModal";
 import { api } from "../../services/api";
 import { useNotification } from '../../contexts/NotificationContext';
+import { usePeriod } from '../../contexts/PeriodContext';
 
 interface Debtor {
   id: string;
@@ -102,15 +103,22 @@ export const Debtors: React.FC = () => {
   const [newStatus, setNewStatus] = useState<"PENDING" | "CHARGED" | "PAID">("PENDING");
 
   const { notify } = useNotification();
+  const { month, year, viewMode } = usePeriod();
 
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
+      // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
+      // inteiro (o backend aceita "year" sozinho para esse caso).
+      const periodParams = viewMode === "monthly" ? { month, year } : { year };
       const [debtorsRes, summaryRes] = await Promise.all([
         api.get("/debtors", {
-          params: statusFilter !== "ALL" ? { status: statusFilter } : {},
+          params: {
+            ...periodParams,
+            ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
+          },
         }),
-        api.get("/debtors/summary"),
+        api.get("/debtors/summary", { params: periodParams }),
       ]);
       setDebtors(debtorsRes.data);
       setSummary(summaryRes.data);
@@ -119,7 +127,7 @@ export const Debtors: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, month, year, viewMode]);
 
   useEffect(() => {
     loadData();
