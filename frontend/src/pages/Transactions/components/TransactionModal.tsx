@@ -11,6 +11,8 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   CircularProgress,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
@@ -22,6 +24,7 @@ export interface NewTransactionData {
   type: 'INCOME' | 'EXPENSE';
   categoryId: string;
   date: string;
+  installmentTotal?: number;
 }
 
 export interface EditableTransaction {
@@ -54,6 +57,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(today);
+  const [isInstallment, setIsInstallment] = useState(false);
+  const [installmentTotal, setInstallmentTotal] = useState('2');
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
@@ -76,6 +81,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       setDate(today);
     }
 
+    setIsInstallment(false);
+    setInstallmentTotal('2');
     loadCategories();
   }, [open, transaction]);
 
@@ -105,12 +112,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
     e.preventDefault();
     if (!description || !amount || !category || !date) return;
 
+    const shouldSplitInInstallments = !isEditing && isInstallment && Number(installmentTotal) >= 2;
+
     onSubmit({
       description,
       amount: parseFloat(amount),
       type,
       categoryId: category,
       date,
+      ...(shouldSplitInInstallments ? { installmentTotal: Number(installmentTotal) } : {}),
     });
 
     onClose();
@@ -161,7 +171,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
           />
 
           <TextField
-            label="Valor (R$)"
+            label={isInstallment ? 'Valor total (R$)' : 'Valor (R$)'}
             type="number"
             placeholder="0,00"
             fullWidth
@@ -171,6 +181,39 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
+
+          {!isEditing && (
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isInstallment}
+                    onChange={(e) => setIsInstallment(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label="Parcelar"
+                sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+              />
+              {isInstallment && (
+                <TextField
+                  label="Número de parcelas"
+                  type="number"
+                  fullWidth
+                  required
+                  size="small"
+                  slotProps={{ htmlInput: { step: '1', min: '2' } }}
+                  value={installmentTotal}
+                  onChange={(e) => setInstallmentTotal(e.target.value)}
+                  helperText={
+                    amount && Number(installmentTotal) >= 2
+                      ? `${installmentTotal}x de R$ ${(parseFloat(amount) / Number(installmentTotal)).toFixed(2)}`
+                      : ' '
+                  }
+                />
+              )}
+            </Box>
+          )}
 
           <TextField
             select
