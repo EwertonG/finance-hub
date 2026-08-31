@@ -72,7 +72,17 @@ export const Dashboard: React.FC = () => {
     totalOverall: 0,
   });
   const [periodTransactions, setPeriodTransactions] = useState<Transaction[]>([]);
+  const [categoryTransactions, setCategoryTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Gastos por categoria não acompanham o período selecionado (visão sempre
+  // geral), então são buscados uma única vez, fora do fluxo de recarga por período.
+  useEffect(() => {
+    api
+      .get('/transactions')
+      .then((res) => setCategoryTransactions(res.data))
+      .catch((error) => console.error('Erro ao buscar transações para o gráfico de categorias', error));
+  }, []);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -90,7 +100,7 @@ export const Dashboard: React.FC = () => {
 
       const [transactionsRes, debtorsSummaryRes] = await Promise.all([
         api.get('/transactions', { params: periodParams }),
-        api.get('/debtors/summary'),
+        api.get('/debtors/summary', { params: periodParams }),
       ]);
 
       setPeriodTransactions(transactionsRes.data);
@@ -147,7 +157,7 @@ export const Dashboard: React.FC = () => {
   };
 
   // Calcular distribuição de gastos por categoria no período selecionado
-  const expenses = periodTransactions.filter(tx => tx.type === 'EXPENSE');
+  const expenses = categoryTransactions.filter(tx => tx.type === 'EXPENSE');
   const totalExpenses = expenses.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
   const categoryMap: { [name: string]: number } = {};
