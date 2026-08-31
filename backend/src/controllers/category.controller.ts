@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 export async function createCategory(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { name, color, type } = req.body;
+    const { name, color, icon, type } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -22,6 +22,7 @@ export async function createCategory(req: Request, res: Response) {
       data: {
         name,
         color: color || '#6B7280',
+        icon: icon || 'MoreHorizRounded',
         type,
         userId,
       },
@@ -64,7 +65,7 @@ export async function updateCategory(req: Request, res: Response) {
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const { name, color, type } = req.body;
+    const { name, color, icon, type } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -88,6 +89,7 @@ export async function updateCategory(req: Request, res: Response) {
       data: {
         ...(name ? { name } : {}),
         ...(color ? { color } : {}),
+        ...(icon ? { icon } : {}),
         ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type } : {}),
       },
     });
