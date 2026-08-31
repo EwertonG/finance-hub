@@ -15,20 +15,23 @@ export async function ensureSubscriptionTransactions(userId: string) {
       where: { recurrenceId: subscription.id },
     });
 
+    // Datas são armazenadas como UTC-meia-noite; usar os getters locais aqui
+    // misturaria fuso e deslocaria o dia (bug já visto em teste manual).
     const monthsElapsed =
-      (now.getFullYear() - subscription.startDate.getFullYear()) * 12 +
-      (now.getMonth() - subscription.startDate.getMonth()) +
+      (now.getUTCFullYear() - subscription.startDate.getUTCFullYear()) * 12 +
+      (now.getUTCMonth() - subscription.startDate.getUTCMonth()) +
       1;
 
     if (monthsElapsed <= existingCount) continue;
 
-    const day = subscription.startDate.getDate();
+    const day = subscription.startDate.getUTCDate();
     const missingTransactions = [];
 
     for (let i = existingCount; i < monthsElapsed; i++) {
-      const chargeDate = new Date(subscription.startDate.getFullYear(), subscription.startDate.getMonth() + i, 1);
-      const daysInMonth = new Date(chargeDate.getFullYear(), chargeDate.getMonth() + 1, 0).getDate();
-      chargeDate.setDate(Math.min(day, daysInMonth));
+      const year = subscription.startDate.getUTCFullYear();
+      const month = subscription.startDate.getUTCMonth() + i;
+      const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      const chargeDate = new Date(Date.UTC(year, month, Math.min(day, daysInMonth)));
 
       missingTransactions.push({
         description: subscription.description,
