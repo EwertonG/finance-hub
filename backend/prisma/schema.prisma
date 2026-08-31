@@ -22,6 +22,11 @@ enum DebtorStatus {
   PAID
 }
 
+enum GoalContributionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
 model User {
   id           String        @id @default(uuid())
   name         String
@@ -33,6 +38,8 @@ model User {
   transactions Transaction[]
   debtors      Debtor[]
   recurrences  Recurrence[]
+  goals        Goal[]
+  goalContributions GoalContribution[]
 
   @@map("users")
 }
@@ -98,6 +105,43 @@ model Recurrence {
   createdAt        DateTime        @default(now()) @map("created_at")
 
   @@map("recurrences")
+}
+
+// Valor atual não é armazenado: é sempre a soma das contribuições, mesmo
+// padrão já usado nos resumos de devedores/transações deste app.
+model Goal {
+  id            String   @id @default(uuid())
+  name          String
+  targetAmount  Decimal  @map("target_amount") @db.Decimal(10, 2)
+  targetDate    DateTime? @map("target_date")
+  color         String   @default("#047857")
+
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contributions GoalContribution[]
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("goals")
+}
+
+model GoalContribution {
+  id        String               @id @default(uuid())
+  amount    Decimal              @db.Decimal(10, 2)
+  type      GoalContributionType
+  note      String?
+  date      DateTime             @default(now())
+
+  goalId    String   @map("goal_id")
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("goal_contributions")
 }
 
 model Debtor {
