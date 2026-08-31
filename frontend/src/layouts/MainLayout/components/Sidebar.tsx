@@ -19,6 +19,7 @@ import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
+import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -56,6 +57,7 @@ export const Sidebar: React.FC = () => {
     { title: 'Lançamentos', path: '/transactions', icon: <ReceiptLongRoundedIcon /> },
     { title: 'Categorias', path: '/categories', icon: <CategoryRoundedIcon /> },
     { title: 'Devedores', path: '/debtors', icon: <GroupRoundedIcon /> },
+    { title: 'Assinaturas', path: '/subscriptions', icon: <AutorenewRoundedIcon /> },
   ];
 
   return (

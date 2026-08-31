@@ -20,6 +20,10 @@ const pageHeaders: Record<string, { title: string; description: string }> = {
     title: 'Caderno de Devedores',
     description: 'Acompanhe divisões de contas e pendências com amigos.',
   },
+  '/subscriptions': {
+    title: 'Assinaturas',
+    description: 'Gerencie cobranças recorrentes e parcelamentos.',
+  },
 };
 
 export const Topbar: React.FC = () => {
@@ -31,9 +35,9 @@ export const Topbar: React.FC = () => {
     description: 'Plataforma de gestão financeira.',
   };
 
-  // Categorias não têm recorte temporal, então o seletor de período não
-  // se aplica a essa tela.
-  const showPeriodSelector = location.pathname !== '/categories';
+  // Categorias e Assinaturas não têm recorte temporal, então o seletor de
+  // período não se aplica a essas telas.
+  const showPeriodSelector = !['/categories', '/subscriptions'].includes(location.pathname);
 
   return (
     <Box
