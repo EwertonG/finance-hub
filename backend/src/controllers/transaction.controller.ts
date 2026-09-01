@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
+import { buildDateFilter } from '../lib/dateFilter.js';
 
 export async function createTransaction(req: Request, res: Response) {
   try {
@@ -66,29 +67,9 @@ export async function listTransactions(req: Request, res: Response) {
 
     await ensureSubscriptionTransactions(userId);
 
-    // Com apenas "year" filtra o ano inteiro (usado pela visão anual do
-    // Dashboard); com "month" e "year" filtra o mês específico.
-    let dateFilter = {};
-    if (year) {
-      const parsedYear = parseInt(String(year), 10);
-      const startDate = month
-        ? new Date(parsedYear, parseInt(String(month), 10) - 1, 1)
-        : new Date(parsedYear, 0, 1);
-      const endDate = month
-        ? new Date(parsedYear, parseInt(String(month), 10), 0, 23, 59, 59, 999)
-        : new Date(parsedYear, 11, 31, 23, 59, 59, 999);
-
-      dateFilter = {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      };
-    }
-
     const where = {
       userId,
-      ...dateFilter,
+      ...buildDateFilter(month, year),
       ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
       ...(categoryId ? { categoryId: String(categoryId) } : {}),
     };

@@ -31,7 +31,7 @@ export interface Category {
 interface CategoryModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onSaved: (category: Category) => void;
 
   category?: Category | null;
 }
@@ -39,7 +39,7 @@ interface CategoryModalProps {
 export const CategoryModal: React.FC<CategoryModalProps> = ({
   open,
   onClose,
-  onCreated,
+  onSaved,
   category,
 }) => {
   const [name, setName] = useState('');
@@ -90,13 +90,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         type,
       };
 
-      if (category) {
-        await api.put(`/categories/${category.id}`, data);
-      } else {
-        await api.post('/categories', data);
-      }
+      const response = category
+        ? await api.put(`/categories/${category.id}`, data)
+        : await api.post('/categories', data);
 
-      onCreated();
+      onSaved(response.data);
 
       onClose();
     } catch (error) {
