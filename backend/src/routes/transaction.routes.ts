@@ -5,6 +5,7 @@ import {
   getTransactionSummary,
   getAnnualSummary,
   getCategoryBreakdown,
+  getFirstTransactionDate,
   updateTransaction,
   deleteTransaction,
 } from '../controllers/transaction.controller.js';
@@ -19,6 +20,7 @@ transactionRoutes.get('/', listTransactions);
 transactionRoutes.get('/summary', getTransactionSummary);
 transactionRoutes.get('/annual-summary', getAnnualSummary);
 transactionRoutes.get('/category-breakdown', getCategoryBreakdown);
+transactionRoutes.get('/first-date', getFirstTransactionDate);
 transactionRoutes.put('/:id', updateTransaction);
 transactionRoutes.delete('/:id', deleteTransaction);
 
