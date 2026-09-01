@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum RecurrenceKind {
+  INSTALLMENT
+  SUBSCRIPTION
+}
+
+enum DebtorStatus {
+  PENDING
+  CHARGED
+  PAID
+}
+
+enum GoalContributionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String        @map("password_hash")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  categories   Category[]
+  transactions Transaction[]
+  debtors      Debtor[]
+  recurrences  Recurrence[]
+  goals        Goal[]
+  goalContributions GoalContribution[]
+
+  @@map("users")
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  color        String        @default("#6B7280")
+  icon         String        @default("MoreHorizRounded")
+  type         TransactionType
+  userId       String        @map("user_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  recurrences  Recurrence[]
+
+  @@map("categories")
+}
+
+model Transaction {
+  id                String          @id @default(uuid())
+  description       String
+  amount            Decimal         @db.Decimal(10, 2)
+  date              DateTime
+  type              TransactionType
+
+  userId            String          @map("user_id")
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId        String?         @map("category_id")
+  category          Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  recurrenceId      String?         @map("recurrence_id")
+  recurrence        Recurrence?     @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+  installmentNumber Int?            @map("installment_number")
+
+  debtors     Debtor[]
+
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@map("transactions")
+}
+
+// Molde que gera transações: parcelamento (todas as N parcelas criadas de
+// uma vez) ou assinatura (materializada sob demanda período a período).
+model Recurrence {
+  id               String          @id @default(uuid())
+  description      String
+  amount           Decimal         @db.Decimal(10, 2)
+  type             TransactionType
+  kind             RecurrenceKind
+  startDate        DateTime        @map("start_date")
+  installmentTotal Int?            @map("installment_total")
+  active           Boolean         @default(true)
+
+  userId           String          @map("user_id")
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId       String?         @map("category_id")
+  category         Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  transactions     Transaction[]
+
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  @@map("recurrences")
+}
+
+// Valor atual não é armazenado: é sempre a soma das contribuições, mesmo
+// padrão já usado nos resumos de devedores/transações deste app.
+model Goal {
+  id            String   @id @default(uuid())
+  name          String
+  targetAmount  Decimal  @map("target_amount") @db.Decimal(10, 2)
+  targetDate    DateTime? @map("target_date")
+  color         String   @default("#047857")
+
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contributions GoalContribution[]
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("goals")
+}
+
+model GoalContribution {
+  id        String               @id @default(uuid())
+  amount    Decimal              @db.Decimal(10, 2)
+  type      GoalContributionType
+  note      String?
+  date      DateTime             @default(now())
+
+  goalId    String   @map("goal_id")
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("goal_contributions")
+}
+
+model Debtor {
+  id               String       @id @default(uuid())
+  personName       String       @map("person_name")
+  item             String       
+  amount           Decimal      @db.Decimal(10, 2)
+  totalAmount      Decimal?     @map("total_amount") @db.Decimal(10, 2) 
+  status           DebtorStatus @default(PENDING)
+  date             DateTime     @default(now())
+  
+  userId           String       @map("user_id")
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactionId    String?      @map("transaction_id")
+  transaction      Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  @@map("debtors")
+}
