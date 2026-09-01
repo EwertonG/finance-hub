@@ -344,3 +344,27 @@ export async function getCategoryBreakdown(req: Request, res: Response) {
     return res.status(500).json({ error: 'Erro interno ao calcular gastos por categoria.' });
   }
 }
+
+// Usado pelo gráfico de evolução do dashboard para não mostrar meses
+// anteriores ao primeiro lançamento (a conta pode ter sido criada bem antes
+// do usuário começar a registrar gastos de fato).
+export async function getFirstTransactionDate(req: Request, res: Response) {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuário não autenticado.' });
+    }
+
+    const first = await prisma.transaction.findFirst({
+      where: { userId },
+      orderBy: { date: 'asc' },
+      select: { date: true },
+    });
+
+    return res.json({ date: first?.date ?? null });
+  } catch (error) {
+    console.error('Erro ao buscar primeiro lançamento:', error);
+    return res.status(500).json({ error: 'Erro interno ao buscar primeiro lançamento.' });
+  }
+}
