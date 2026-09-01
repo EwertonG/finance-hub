@@ -163,7 +163,7 @@ export const Categories = () => {
                 <Box
                   key={category.id}
                   sx={{
-                    display: 'flex', alignItems: 'center', gap: 2, px: 3, py: 2,
+                    display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, px: { xs: 2, sm: 3 }, py: 2,
                     borderBottom: index !== categories.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
                     '&:hover': { bgcolor: 'action.hover' },
                     transition: 'background-color 0.2s',
