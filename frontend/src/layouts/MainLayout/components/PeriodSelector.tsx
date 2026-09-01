@@ -16,7 +16,7 @@ export const PeriodSelector: React.FC = () => {
   const label = viewMode === 'monthly' ? `${MONTH_NAMES[month - 1]} ${year}` : `${year}`;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
       <ToggleButtonGroup
         value={viewMode}
         exclusive
@@ -45,7 +45,7 @@ export const PeriodSelector: React.FC = () => {
         <IconButton size="small" onClick={goToPreviousPeriod} aria-label="Período anterior">
           <ChevronLeftRoundedIcon fontSize="small" />
         </IconButton>
-        <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 110, textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, minWidth: { xs: 90, sm: 110 }, textAlign: 'center' }}>
           {label}
         </Typography>
         <IconButton size="small" onClick={goToNextPeriod} aria-label="Próximo período">
