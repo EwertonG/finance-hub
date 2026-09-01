@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -19,7 +19,7 @@ import {
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
-import { api } from "../../../services/api";
+import { useCategories } from "../../../hooks/useCategories";
 
 export interface NewDebtorData {
   item: string;
@@ -36,11 +36,6 @@ interface DebtorModalProps {
   onSubmit: (data: NewDebtorData) => void;
 }
 
-interface Category {
-  id: string;
-  name: string;
-}
-
 export const DebtorModal: React.FC<DebtorModalProps> = ({ open, onClose, onSubmit }) => {
   const today = new Date().toISOString().split("T")[0];
 
@@ -52,24 +47,7 @@ export const DebtorModal: React.FC<DebtorModalProps> = ({ open, onClose, onSubmi
   const [personInput, setPersonInput] = useState("");
   const [people, setPeople] = useState<string[]>([]);
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-
-  useEffect(() => {
-    if (open) loadCategories();
-  }, [open]);
-
-  const loadCategories = async () => {
-    try {
-      setIsLoadingCategories(true);
-      const response = await api.get("/categories");
-      setCategories(response.data);
-    } catch {
-      console.error("Erro ao buscar categorias");
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  };
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
 
   const handleAddPerson = () => {
     const trimmed = personInput.trim();

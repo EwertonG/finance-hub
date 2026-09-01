@@ -51,22 +51,18 @@ export async function createDebtor(req: Request, res: Response) {
       });
     }
 
-    const createdDebtors = await Promise.all(
-      people.map((personName: string) =>
-        prisma.debtor.create({
-          data: {
-            personName: String(personName).trim(),
-            item,
-            amount: individualAmount,
-            totalAmount: totalAmountNumber,
-            status: 'PENDING',
-            date: transactionDate,
-            userId,
-            transactionId: createdTransaction ? createdTransaction.id : null,
-          },
-        })
-      )
-    );
+    const createdDebtors = await prisma.debtor.createManyAndReturn({
+      data: people.map((personName: string) => ({
+        personName: String(personName).trim(),
+        item,
+        amount: individualAmount,
+        totalAmount: totalAmountNumber,
+        status: 'PENDING' as const,
+        date: transactionDate,
+        userId,
+        transactionId: createdTransaction ? createdTransaction.id : null,
+      })),
+    });
 
     return res.status(201).json({
       message: 'Cobrança(s) criada(s) com sucesso!',
@@ -145,29 +141,18 @@ export async function getDebtorsSummary(req: Request, res: Response) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
-    const debtors = await prisma.debtor.findMany({
+    const totals = await prisma.debtor.groupBy({
+      by: ['status'],
       where: {
         userId,
         ...buildDateFilter(month, year),
       },
+      _sum: { amount: true },
     });
 
-    let totalPending = 0;
-    let totalCharged = 0;
-    let totalPaid = 0;
-
-    debtors.forEach((debtor:any) => {
-      const amountNumber = Number(debtor.amount);
-      const debtorStatus = String(debtor.status);
-
-      if (debtorStatus === 'PENDING') {
-        totalPending += amountNumber;
-      } else if (debtorStatus === 'CHARGED') {
-        totalCharged += amountNumber;
-      } else if (debtorStatus === 'PAID') {
-        totalPaid += amountNumber;
-      }
-    });
+    const totalPending = Number(totals.find((t) => t.status === 'PENDING')?._sum.amount ?? 0);
+    const totalCharged = Number(totals.find((t) => t.status === 'CHARGED')?._sum.amount ?? 0);
+    const totalPaid = Number(totals.find((t) => t.status === 'PAID')?._sum.amount ?? 0);
 
     return res.json({
       totalPending: Number(totalPending.toFixed(2)),

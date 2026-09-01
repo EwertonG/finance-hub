@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -38,45 +39,41 @@ const formatDate = (dateString: string) => {
   return `${day}/${month}/${year}`;
 };
 
+const SUBSCRIPTIONS_QUERY_KEY = ['recurrences', 'SUBSCRIPTION'];
+
 export const Subscriptions: React.FC = () => {
   const theme = useTheme();
+  const queryClient = useQueryClient();
 
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { notify } = useNotification();
 
-  const loadSubscriptions = async () => {
-    try {
-      setIsLoading(true);
+  const { data: subscriptions = [], isLoading } = useQuery({
+    queryKey: SUBSCRIPTIONS_QUERY_KEY,
+    queryFn: async () => {
       const response = await api.get('/recurrences', { params: { kind: 'SUBSCRIPTION' } });
-      setSubscriptions(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar assinaturas:', error);
-      notify('Erro ao carregar assinaturas. Tente novamente.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSubscriptions();
-  }, []);
+      return response.data as Subscription[];
+    },
+  });
 
   // Otimista: alterna o status na hora, sem esperar o servidor confirmar;
   // reverte e avisa se der erro.
   const handleToggleActive = async (subscription: Subscription) => {
     const nextActive = !subscription.active;
-    setSubscriptions((prev) => prev.map((s) => (s.id === subscription.id ? { ...s, active: nextActive } : s)));
+    queryClient.setQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY, (prev = []) =>
+      prev.map((s) => (s.id === subscription.id ? { ...s, active: nextActive } : s))
+    );
 
     try {
       await api.put(`/recurrences/${subscription.id}`, { active: nextActive });
       notify(nextActive ? 'Assinatura reativada.' : 'Assinatura cancelada.', 'success');
     } catch (error) {
       console.error('Erro ao atualizar assinatura:', error);
-      setSubscriptions((prev) => prev.map((s) => (s.id === subscription.id ? subscription : s)));
+      queryClient.setQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY, (prev = []) =>
+        prev.map((s) => (s.id === subscription.id ? subscription : s))
+      );
       notify('Erro ao atualizar assinatura. Tente novamente.', 'error');
     }
   };
@@ -84,9 +81,9 @@ export const Subscriptions: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
-    const previousSubscriptions = subscriptions;
+    const previousSubscriptions = queryClient.getQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY);
 
-    setSubscriptions((prev) => prev.filter((s) => s.id !== idToDelete));
+    queryClient.setQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY, (prev = []) => prev.filter((s) => s.id !== idToDelete));
     setDeleteId(null);
 
     try {
@@ -94,13 +91,15 @@ export const Subscriptions: React.FC = () => {
       notify('Assinatura excluída. Os lançamentos já gerados foram mantidos.', 'success');
     } catch (error) {
       console.error('Erro ao excluir assinatura:', error);
-      setSubscriptions(previousSubscriptions);
+      queryClient.setQueryData(SUBSCRIPTIONS_QUERY_KEY, previousSubscriptions);
       notify('Erro ao excluir assinatura. Tente novamente.', 'error');
     }
   };
 
   const handleSubscriptionSaved = (subscription: Subscription) => {
-    setSubscriptions((prev) => [...prev, subscription]);
+    queryClient.setQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY, (prev = []) => [...prev, subscription]);
+    // Criar uma assinatura gera a transação do período corrente na hora.
+    queryClient.invalidateQueries({ queryKey: ['transactions'] });
     notify('Assinatura criada com sucesso!', 'success');
   };
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -64,12 +65,20 @@ const GoalCardSkeleton: React.FC = () => {
   );
 };
 
+const GOALS_QUERY_KEY = ['goals'];
+
 export const Goals: React.FC = () => {
   const theme = useTheme();
+  const queryClient = useQueryClient();
   const { notify } = useNotification();
 
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: goals = [], isLoading } = useQuery({
+    queryKey: GOALS_QUERY_KEY,
+    queryFn: async () => {
+      const response = await api.get('/goals');
+      return response.data as Goal[];
+    },
+  });
 
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<EditableGoal | null>(null);
@@ -78,22 +87,7 @@ export const Goals: React.FC = () => {
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const loadGoals = async () => {
-    try {
-      setIsLoading(true);
-      const response = await api.get('/goals');
-      setGoals(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar metas:', error);
-      notify('Erro ao carregar metas. Tente novamente.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadGoals();
-  }, []);
+  const invalidateGoals = () => queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
 
   const handleOpenCreateModal = () => {
     setEditingGoal(null);
@@ -110,9 +104,9 @@ export const Goals: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
-    const previousGoals = goals;
+    const previousGoals = queryClient.getQueryData<Goal[]>(GOALS_QUERY_KEY);
 
-    setGoals((prev) => prev.filter((g) => g.id !== idToDelete));
+    queryClient.setQueryData<Goal[]>(GOALS_QUERY_KEY, (prev = []) => prev.filter((g) => g.id !== idToDelete));
     setDeleteId(null);
 
     try {
@@ -120,7 +114,7 @@ export const Goals: React.FC = () => {
       notify('Meta excluída com sucesso!', 'success');
     } catch (error) {
       console.error('Erro ao excluir meta:', error);
-      setGoals(previousGoals);
+      queryClient.setQueryData(GOALS_QUERY_KEY, previousGoals);
       notify('Erro ao excluir meta. Tente novamente.', 'error');
     }
   };
@@ -249,14 +243,14 @@ export const Goals: React.FC = () => {
       <GoalModal
         open={isGoalModalOpen}
         onClose={() => setIsGoalModalOpen(false)}
-        onSaved={loadGoals}
+        onSaved={invalidateGoals}
         goal={editingGoal}
       />
 
       <ContributionModal
         open={!!contributionGoal}
         onClose={() => setContributionGoal(null)}
-        onSaved={loadGoals}
+        onSaved={invalidateGoals}
         goalId={contributionGoal?.id ?? null}
         goalName={contributionGoal?.name}
       />

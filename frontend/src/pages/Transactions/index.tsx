@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -35,6 +36,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import { getCategoryIconComponent } from '../../constants/categoryIcons';
+import { useCategories } from '../../hooks/useCategories';
 
 interface Transaction {
   id: string;
@@ -48,38 +50,46 @@ interface Transaction {
   recurrence: { kind: 'INSTALLMENT' | 'SUBSCRIPTION'; installmentTotal: number | null } | null;
 }
 
-interface Category {
-  id: string;
-  name: string;
-}
-
 const PAGE_SIZE = 10;
 
 export const Transactions: React.FC = () => {
   const theme = useTheme();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
-
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: categories = [] } = useCategories();
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { notify } = useNotification();
   const { month, year, viewMode } = usePeriod();
 
-  useEffect(() => {
-    api.get('/categories').then((res) => setCategories(res.data));
-  }, []);
+  const listParams = {
+    ...(viewMode === 'monthly' ? { month, year } : { year }),
+    ...(typeFilter !== 'ALL' ? { type: typeFilter } : {}),
+    ...(categoryFilter !== 'ALL' ? { categoryId: categoryFilter } : {}),
+    page,
+    limit: PAGE_SIZE,
+  };
 
-  // Muda de período reseta a página para não ficar numa página que pode
-  // não existir mais para o novo recorte.
+  const { data, isLoading } = useQuery({
+    queryKey: ['transactions', 'list', listParams],
+    queryFn: async () => {
+      const response = await api.get('/transactions', { params: listParams });
+      return response.data as { data: Transaction[]; totalPages: number };
+    },
+    placeholderData: (previous) => previous,
+  });
+
+  const transactions = data?.data ?? [];
+  const totalPages = data?.totalPages ?? 1;
+
+  // Muda de período (contexto global) reseta a página, que pode não existir
+  // mais no novo recorte.
   useEffect(() => {
     setPage(1);
   }, [month, year, viewMode]);
@@ -92,31 +102,6 @@ export const Transactions: React.FC = () => {
   const handleCategoryFilterChange = (value: string) => {
     setCategoryFilter(value);
     setPage(1);
-  };
-
-  const loadTransactions = async () => {
-    try {
-      setIsLoading(true);
-      // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
-      // inteiro (o backend aceita "year" sozinho para esse caso).
-      const periodParams = viewMode === 'monthly' ? { month, year } : { year };
-      const response = await api.get('/transactions', {
-        params: {
-          ...periodParams,
-          ...(typeFilter !== 'ALL' ? { type: typeFilter } : {}),
-          ...(categoryFilter !== 'ALL' ? { categoryId: categoryFilter } : {}),
-          page,
-          limit: PAGE_SIZE,
-        },
-      });
-      setTransactions(response.data.data);
-      setTotalPages(response.data.totalPages);
-    } catch (error) {
-      console.error('Erro ao buscar lançamentos:', error);
-      notify('Erro ao carregar lançamentos. Tente novamente.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const formatCurrency = (value: number) => {
@@ -161,9 +146,11 @@ export const Transactions: React.FC = () => {
       } else {
         await api.post('/transactions', data);
       }
-      // Recarrega da API em vez de mexer no array local: o lançamento só
-      // deve aparecer na lista se cair dentro do período/filtros selecionados.
-      await loadTransactions();
+      // Invalida em vez de mexer no array local: o lançamento só deve
+      // aparecer na lista se cair dentro do período/filtros selecionados, e
+      // outras páginas (Dashboard) que dependem de transações também precisam
+      // saber que os dados mudaram.
+      await queryClient.invalidateQueries({ queryKey: ['transactions'] });
       notify(editingTransaction ? 'Lançamento atualizado com sucesso!' : 'Lançamento adicionado com sucesso!', 'success');
     } catch (error) {
       console.error('Erro ao salvar lançamento:', error);
@@ -176,25 +163,24 @@ export const Transactions: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
-    const previousTransactions = transactions;
+    const listQueryKey = ['transactions', 'list', listParams];
+    const previousData = queryClient.getQueryData(listQueryKey);
 
-    setTransactions((prev) => prev.filter((tx) => tx.id !== idToDelete));
+    queryClient.setQueryData(listQueryKey, (prev: typeof data) =>
+      prev ? { ...prev, data: prev.data.filter((tx) => tx.id !== idToDelete) } : prev
+    );
     setDeleteId(null);
 
     try {
       await api.delete(`/transactions/${idToDelete}`);
       notify('Lançamento excluído com sucesso!', 'success');
-      loadTransactions();
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     } catch (error) {
-      console.error ('Erro ao deletar lançamento:', error);
-      setTransactions(previousTransactions);
+      console.error('Erro ao deletar lançamento:', error);
+      queryClient.setQueryData(listQueryKey, previousData);
       notify('Erro ao excluir lançamento. Tente novamente.', 'error');
     }
   };
-
-  useEffect(() => {
-    loadTransactions();
-  }, [month, year, viewMode, typeFilter, categoryFilter, page]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

@@ -109,7 +109,7 @@ export async function createRecurrence(req: Request, res: Response) {
       include: { category: true },
     });
 
-    await ensureSubscriptionTransactions(userId);
+    await ensureSubscriptionTransactions(userId, true);
 
     return res.status(201).json(recurrence);
   } catch (error) {
@@ -136,7 +136,7 @@ export async function listRecurrences(req: Request, res: Response) {
         userId,
         ...(kind === 'INSTALLMENT' || kind === 'SUBSCRIPTION' ? { kind } : {}),
       },
-      include: { category: true },
+      include: { category: { select: { id: true, name: true, color: true, icon: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
