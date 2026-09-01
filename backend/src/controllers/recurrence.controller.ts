@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 
+const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
+
 export async function createRecurrence(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { description, type, categoryId, startDate, kind, installmentTotal, totalAmount, amount } = req.body;
+    const { description, type, categoryId, startDate, kind, installmentTotal, totalAmount, amount, paymentMethod } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -23,6 +25,10 @@ export async function createRecurrence(req: Request, res: Response) {
 
     if (kind !== 'INSTALLMENT' && kind !== 'SUBSCRIPTION') {
       return res.status(400).json({ error: 'kind deve ser INSTALLMENT ou SUBSCRIPTION.' });
+    }
+
+    if (paymentMethod && !PAYMENT_METHODS.includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Forma de pagamento inválida.' });
     }
 
     if (categoryId) {
@@ -60,6 +66,7 @@ export async function createRecurrence(req: Request, res: Response) {
           installmentTotal: total,
           userId,
           categoryId: categoryId ? String(categoryId) : null,
+          paymentMethod: paymentMethod || null,
         },
       });
 
@@ -80,6 +87,7 @@ export async function createRecurrence(req: Request, res: Response) {
           type,
           userId,
           categoryId: categoryId ? String(categoryId) : null,
+          paymentMethod: paymentMethod || null,
           recurrenceId: recurrence.id,
           installmentNumber: i + 1,
         };
@@ -105,6 +113,7 @@ export async function createRecurrence(req: Request, res: Response) {
         startDate: start,
         userId,
         categoryId: categoryId ? String(categoryId) : null,
+        paymentMethod: paymentMethod || null,
       },
       include: { category: true },
     });

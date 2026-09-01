@@ -28,6 +28,9 @@ import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { getCategoryIconComponent } from '../../constants/categoryIcons';
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
 export const Categories = () => {
   const theme = useTheme();
   const queryClient = useQueryClient();
@@ -160,6 +163,11 @@ export const Categories = () => {
                     <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
                       {category.name}
                     </Typography>
+                    {category.budget != null && (
+                      <Typography variant="caption" color="text.secondary">
+                        Limite mensal: {formatCurrency(category.budget)}
+                      </Typography>
+                    )}
                   </Box>
 
                   <Chip

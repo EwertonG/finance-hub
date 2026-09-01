@@ -16,6 +16,7 @@ import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { api } from '../../../services/api';
 import { useCategories } from '../../../hooks/useCategories';
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type PaymentMethod } from '../../../constants/paymentMethods';
 
 export interface Subscription {
   id: string;
@@ -41,6 +42,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState(today);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
 
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,6 +54,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
     setDescription('');
     setAmount('');
     setStartDate(today);
+    setPaymentMethod('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -78,6 +81,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
         categoryId: category || undefined,
         startDate,
         kind: 'SUBSCRIPTION',
+        paymentMethod: paymentMethod || undefined,
       });
       onSaved(response.data);
       onClose();
@@ -156,6 +160,22 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
             {categories.map((cat) => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label="Forma de pagamento (opcional)"
+            fullWidth
+            size="small"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | '')}
+          >
+            <MenuItem value="">Não informado</MenuItem>
+            {PAYMENT_METHODS.map((method) => (
+              <MenuItem key={method} value={method}>
+                {PAYMENT_METHOD_LABELS[method]}
               </MenuItem>
             ))}
           </TextField>

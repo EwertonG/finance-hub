@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { usePeriod } from '../../../contexts/PeriodContext';
+import { useCategories } from '../../../hooks/useCategories';
 import { MONTH_LABELS } from '../utils';
+import { PAYMENT_METHODS, type PaymentMethod } from '../../../constants/paymentMethods';
 import type {
   Summary,
   DebtorSummary,
@@ -10,6 +12,7 @@ import type {
   GoalSummary,
   SubscriptionSummary,
   CategoryBreakdownItem,
+  BudgetProgressItem,
 } from '../types';
 
 const EMPTY_SUMMARY: Summary = { income: 0, expense: 0, total: 0 };
@@ -26,7 +29,13 @@ const EMPTY_DEBTOR_SUMMARY: DebtorSummary = {
 const MAX_CATEGORY_BARS = 7;
 
 interface CategoryBreakdownRow {
+  categoryId: string | null;
   name: string;
+  amount: number;
+}
+
+interface PaymentMethodBreakdownRow {
+  paymentMethod: PaymentMethod;
   amount: number;
 }
 
@@ -115,6 +124,18 @@ export function useDashboardData() {
       return response.data;
     },
   });
+
+  const paymentMethodBreakdownQuery = useQuery({
+    queryKey: ['transactions', 'payment-method-breakdown', periodParams],
+    queryFn: async () => {
+      const response = await api.get<PaymentMethodBreakdownRow[]>('/transactions/payment-method-breakdown', { params: periodParams });
+      return response.data;
+    },
+  });
+
+  // Cache compartilhado (já usado em Transações/Categorias) — só pra ler o
+  // limite mensal de cada categoria, sem fetch dedicado.
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
   const goalsQuery = useQuery({
     queryKey: ['goals'],
@@ -211,6 +232,28 @@ export function useDashboardData() {
     Despesa: m.totalExpense,
   }));
 
+  // Cruza categorias com limite definido com o gasto do período (já
+  // period-scoped pelo category-breakdown) — categoria sem gasto no período
+  // ainda aparece, com 0 gasto.
+  const spentByCategoryId = new Map((categoryBreakdownQuery.data ?? []).map((row) => [row.categoryId, row.amount]));
+  const budgetProgress: BudgetProgressItem[] = categories
+    .filter((c) => c.type === 'EXPENSE' && c.budget != null)
+    .map((c) => ({
+      categoryId: c.id,
+      name: c.name,
+      color: c.color,
+      icon: c.icon,
+      budget: c.budget as number,
+      spent: spentByCategoryId.get(c.id) ?? 0,
+    }));
+
+  const amountByMethod: Partial<Record<PaymentMethod, number>> = Object.fromEntries(
+    PAYMENT_METHODS.map((method) => [
+      method,
+      paymentMethodBreakdownQuery.data?.find((row) => row.paymentMethod === method)?.amount ?? 0,
+    ])
+  );
+
   return {
     month,
     year,
@@ -227,5 +270,9 @@ export function useDashboardData() {
     goals: goalsQuery.data ?? [],
     subscriptionsLoading: subscriptionsQuery.isLoading,
     subscriptions: subscriptionsQuery.data ?? [],
+    budgetLoading: categoriesLoading || categoryBreakdownQuery.isLoading,
+    budgetProgress,
+    paymentMethodLoading: paymentMethodBreakdownQuery.isLoading,
+    amountByMethod,
   };
 }

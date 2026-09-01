@@ -17,6 +17,7 @@ import {
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { useCategories } from '../../../hooks/useCategories';
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type PaymentMethod } from '../../../constants/paymentMethods';
 
 export interface NewTransactionData {
   description: string;
@@ -25,6 +26,7 @@ export interface NewTransactionData {
   categoryId: string;
   date: string;
   installmentTotal?: number;
+  paymentMethod?: PaymentMethod;
 }
 
 export interface EditableTransaction {
@@ -34,6 +36,7 @@ export interface EditableTransaction {
   type: 'INCOME' | 'EXPENSE';
   categoryId: string | null;
   date: string;
+  paymentMethod?: PaymentMethod | null;
 }
 
 interface TransactionModalProps {
@@ -54,6 +57,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
   const [date, setDate] = useState(today);
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentTotal, setInstallmentTotal] = useState('2');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
 
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
 
@@ -66,11 +70,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       setDescription(transaction.description);
       setAmount(String(transaction.amount));
       setDate(transaction.date.split('T')[0]);
+      setPaymentMethod(transaction.paymentMethod || '');
     } else {
       setType('EXPENSE');
       setDescription('');
       setAmount('');
       setDate(today);
+      setPaymentMethod('');
     }
 
     setIsInstallment(false);
@@ -104,6 +110,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       categoryId: category,
       date,
       ...(shouldSplitInInstallments ? { installmentTotal: Number(installmentTotal) } : {}),
+      ...(paymentMethod ? { paymentMethod } : {}),
     });
 
     onClose();
@@ -216,6 +223,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
             {categories.map((cat) => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label="Forma de pagamento (opcional)"
+            fullWidth
+            size="small"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | '')}
+          >
+            <MenuItem value="">Não informado</MenuItem>
+            {PAYMENT_METHODS.map((method) => (
+              <MenuItem key={method} value={method}>
+                {PAYMENT_METHOD_LABELS[method]}
               </MenuItem>
             ))}
           </TextField>

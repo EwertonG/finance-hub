@@ -27,6 +27,13 @@ enum GoalContributionType {
   WITHDRAWAL
 }
 
+enum PaymentMethod {
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+  CASH
+}
+
 model User {
   id           String        @id @default(uuid())
   name         String
@@ -50,6 +57,7 @@ model Category {
   color        String        @default("#6B7280")
   icon         String        @default("MoreHorizRounded")
   type         TransactionType
+  budget       Decimal?      @db.Decimal(10, 2)
   userId       String        @map("user_id")
   createdAt    DateTime      @default(now()) @map("created_at")
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -77,6 +85,8 @@ model Transaction {
   recurrence        Recurrence?     @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
   installmentNumber Int?            @map("installment_number")
 
+  paymentMethod     PaymentMethod?  @map("payment_method")
+
   debtors     Debtor[]
 
   createdAt   DateTime        @default(now()) @map("created_at")
@@ -98,6 +108,7 @@ model Recurrence {
   startDate        DateTime        @map("start_date")
   installmentTotal Int?            @map("installment_total")
   active           Boolean         @default(true)
+  paymentMethod    PaymentMethod?  @map("payment_method")
 
   userId           String          @map("user_id")
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
