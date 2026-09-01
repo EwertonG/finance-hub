@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemButton, 
-  ListItemIcon, 
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
   ListItemText,
   Typography,
   Avatar,
   IconButton,
   Divider,
   useTheme,
+  useMediaQuery,
   Menu,
   MenuItem
 } from '@mui/material';
@@ -29,13 +30,19 @@ import { DRAWER_WIDTH } from '../constants';
 
 import logoImg from '../../../assets/logo.png'; 
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
-  
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+
   const { user, signOut } = useAuth();
-  
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -62,22 +69,14 @@ export const Sidebar: React.FC = () => {
     { title: 'Metas', path: '/goals', icon: <SavingsRoundedIcon /> },
   ];
 
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: DRAWER_WIDTH,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: DRAWER_WIDTH,
-          boxSizing: 'border-box',
-          bgcolor: 'background.paper',
-          borderRight: `1px solid ${theme.palette.divider}`,
-          display: 'flex',
-          flexDirection: 'column',
-        },
-      }}
-    >
+  // No modo mobile (Drawer sobreposto) navegar deve fechar o menu também.
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    if (!isDesktop) onMobileClose();
+  };
+
+  const drawerContent = (
+    <>
       {/* TOPO: Logo e Saudação */}
       <Box
         sx={{
@@ -109,7 +108,7 @@ export const Sidebar: React.FC = () => {
             return (
               <ListItem key={item.title} disablePadding sx={{ mb: 1 }}>
                 <ListItemButton
-                  onClick={() => navigate(item.path)}
+                  onClick={() => handleNavigate(item.path)}
                   sx={{
                     borderRadius: 2,
                     bgcolor: isActive ? 'primary.main' : 'transparent',
@@ -200,6 +199,40 @@ export const Sidebar: React.FC = () => {
           </MenuItem>
         </Menu>
       </Box>
+    </>
+  );
+
+  const paperSx = {
+    width: DRAWER_WIDTH,
+    boxSizing: 'border-box' as const,
+    bgcolor: 'background.paper',
+    borderRight: `1px solid ${theme.palette.divider}`,
+    display: 'flex',
+    flexDirection: 'column' as const,
+  };
+
+  // Desktop: Drawer permanente, sempre ocupando espaço no layout.
+  // Mobile: Drawer sobreposto (temporary), some por baixo do conteúdo.
+  if (isDesktop) {
+    return (
+      <Drawer
+        variant="permanent"
+        sx={{ width: DRAWER_WIDTH, flexShrink: 0, '& .MuiDrawer-paper': paperSx }}
+      >
+        {drawerContent}
+      </Drawer>
+    );
+  }
+
+  return (
+    <Drawer
+      variant="temporary"
+      open={mobileOpen}
+      onClose={onMobileClose}
+      ModalProps={{ keepMounted: true }}
+      sx={{ '& .MuiDrawer-paper': paperSx }}
+    >
+      {drawerContent}
     </Drawer>
   );
 };
