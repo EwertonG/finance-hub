@@ -20,6 +20,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
 import logoImg from '../../assets/logo.png';
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PASSWORD_REQUIREMENTS_MESSAGE =
+  'A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.';
+
 export const Register: React.FC = () => {
   const navigate = useNavigate();
   const { signIn } = useAuth();
@@ -34,6 +38,12 @@ export const Register: React.FC = () => {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!PASSWORD_REGEX.test(password)) {
+      setError(PASSWORD_REQUIREMENTS_MESSAGE);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -167,6 +177,7 @@ export const Register: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                helperText="Mín. 8 caracteres, com maiúscula, minúscula, número e símbolo"
                 slotProps={{
                   input: {
                     startAdornment: (

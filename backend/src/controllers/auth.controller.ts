@@ -4,6 +4,10 @@ import { hashPassword, comparePassword } from '../utils/hash.js';
 import { generateToken } from '../utils/jwt.js';
 import { DEFAULT_CATEGORIES } from '../constants/defaultCategories.js';
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PASSWORD_REQUIREMENTS_MESSAGE =
+  'A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.';
+
 /* Cadastro */
 export async function register(req: Request, res: Response) {
   try {
@@ -11,6 +15,10 @@ export async function register(req: Request, res: Response) {
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Nome, e-mail e senha são obrigatórios.' });
+    }
+
+    if (!PASSWORD_REGEX.test(password)) {
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
     }
 
     const userAlreadyExists = await prisma.user.findUnique({
