@@ -37,6 +37,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import { getCategoryIconComponent } from '../../constants/categoryIcons';
 import { useCategories } from '../../hooks/useCategories';
+import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS, type PaymentMethod } from '../../constants/paymentMethods';
 
 interface Transaction {
   id: string;
@@ -48,6 +49,7 @@ interface Transaction {
   date: string;
   installmentNumber: number | null;
   recurrence: { kind: 'INSTALLMENT' | 'SUBSCRIPTION'; installmentTotal: number | null } | null;
+  paymentMethod: PaymentMethod | null;
 }
 
 const PAGE_SIZE = 10;
@@ -143,6 +145,7 @@ export const Transactions: React.FC = () => {
           kind: 'INSTALLMENT',
           installmentTotal: data.installmentTotal,
           startInstallmentNumber: data.startInstallmentNumber,
+          paymentMethod: data.paymentMethod,
         });
       } else {
         await api.post('/transactions', data);
@@ -251,6 +254,7 @@ export const Transactions: React.FC = () => {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Descrição</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Categoria</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Pagamento</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Data</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary' }}>Valor</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600, color: 'text.secondary' }}>Ações</TableCell>
@@ -258,10 +262,10 @@ export const Transactions: React.FC = () => {
               </TableHead>
               <TableBody>
                 {isLoading ? (
-                  <TableSkeleton rows={5} columns={5} />
+                  <TableSkeleton rows={5} columns={6} />
                 ) : transactions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={6}>
                       <EmptyState
                         variant="plain"
                         icon={<ReceiptLongRoundedIcon />}
@@ -323,6 +327,24 @@ export const Transactions: React.FC = () => {
                             '& .MuiChip-icon': { color: tx.category?.color },
                           }}
                         />
+                      </TableCell>
+
+                      <TableCell>
+                        {tx.paymentMethod ? (
+                          (() => {
+                            const PaymentIcon = PAYMENT_METHOD_ICONS[tx.paymentMethod];
+                            return (
+                              <Chip
+                                icon={<PaymentIcon />}
+                                label={PAYMENT_METHOD_LABELS[tx.paymentMethod]}
+                                size="small"
+                                sx={{ borderRadius: 1.5, bgcolor: 'action.hover', color: 'text.primary', fontWeight: 500 }}
+                              />
+                            );
+                          })()
+                        ) : (
+                          <Typography variant="body2" color="text.disabled">—</Typography>
+                        )}
                       </TableCell>
 
                       <TableCell>

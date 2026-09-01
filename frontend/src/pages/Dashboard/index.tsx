@@ -5,6 +5,8 @@ import { MONTH_LABELS } from './utils';
 import { SummaryCards } from './components/SummaryCards';
 import { EvolutionChart } from './components/EvolutionChart';
 import { CommitmentsSummary } from './components/CommitmentsSummary';
+import { PaymentMethodSummary } from './components/PaymentMethodSummary';
+import { CategoryBudgetSection } from './components/CategoryBudgetSection';
 import { GoalsSection } from './components/GoalsSection';
 import { RecentTransactionsTable } from './components/RecentTransactionsTable';
 import { CategoryBreakdownChart } from './components/CategoryBreakdownChart';
@@ -26,6 +28,10 @@ export const Dashboard: React.FC = () => {
     goals,
     subscriptionsLoading,
     subscriptions,
+    budgetLoading,
+    budgetProgress,
+    paymentMethodLoading,
+    amountByMethod,
   } = useDashboardData();
 
   const periodLabel = viewMode === 'monthly' ? `${MONTH_LABELS[month - 1]}/${year}` : `${year}`;
@@ -42,6 +48,10 @@ export const Dashboard: React.FC = () => {
         subscriptionsLoading={subscriptionsLoading}
         subscriptions={subscriptions}
       />
+
+      <PaymentMethodSummary loading={paymentMethodLoading} amountByMethod={amountByMethod} />
+
+      <CategoryBudgetSection loading={budgetLoading} items={budgetProgress} periodLabel={periodLabel} />
 
       <GoalsSection loading={goalsLoading} goals={goals} />
 

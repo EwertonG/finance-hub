@@ -64,6 +64,7 @@ export async function ensureSubscriptionTransactions(userId: string, force = fal
         type: subscription.type,
         userId: subscription.userId,
         categoryId: subscription.categoryId,
+        paymentMethod: subscription.paymentMethod,
         recurrenceId: subscription.id,
       });
     }

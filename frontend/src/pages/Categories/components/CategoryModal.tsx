@@ -25,6 +25,7 @@ export interface Category {
   color: string;
   icon: string;
   type: 'INCOME' | 'EXPENSE';
+  budget: number | null;
   createdAt: string;
 }
 
@@ -50,6 +51,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
   const [color, setColor] = useState(ACCENT_COLORS[0]);
   const [icon, setIcon] = useState(DEFAULT_CATEGORY_ICON);
+  const [budget, setBudget] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -63,11 +65,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       setType(category.type);
       setColor(category.color);
       setIcon(category.icon);
+      setBudget(category.budget != null ? String(category.budget) : '');
     } else {
       setName('');
       setType('EXPENSE');
       setColor(ACCENT_COLORS[0]);
       setIcon(DEFAULT_CATEGORY_ICON);
+      setBudget('');
     }
 
     setIsSubmitting(false);
@@ -88,6 +92,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         color,
         icon,
         type,
+        budget: budget ? Number(budget) : null,
       };
 
       const response = category
@@ -223,6 +228,22 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
+
+          {/* Limite mensal (só faz sentido para despesas) */}
+
+          {type === 'EXPENSE' && (
+            <TextField
+              label="Limite mensal (opcional)"
+              placeholder="Ex: 500,00"
+              type="number"
+              fullWidth
+              size="small"
+              slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
+              value={budget}
+              onChange={(event) => setBudget(event.target.value)}
+              helperText="Deixe em branco para não definir um limite"
+            />
+          )}
 
           {/* Ícone da categoria */}
 
