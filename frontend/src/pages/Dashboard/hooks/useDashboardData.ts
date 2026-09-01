@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { usePeriod } from '../../../contexts/PeriodContext';
-import { useAuth } from '../../../contexts/AuthContext';
 import { MONTH_LABELS } from '../utils';
 import type {
   Summary,
@@ -61,7 +60,6 @@ interface AnnualSummaryResponse {
 
 export function useDashboardData() {
   const { month, year, viewMode } = usePeriod();
-  const { user } = useAuth();
 
   // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano inteiro
   // (o backend aceita "year" sozinho para esse caso). Mesmo formato de
@@ -134,6 +132,18 @@ export function useDashboardData() {
     },
   });
 
+  // Data do primeiro lançamento já feito (não a criação da conta — o
+  // usuário pode ter criado a conta bem antes de começar a registrar
+  // gastos de fato). Sob o prefixo 'transactions', então qualquer mutação
+  // de lançamento já invalida isso também.
+  const firstTransactionDateQuery = useQuery({
+    queryKey: ['transactions', 'first-date'],
+    queryFn: async () => {
+      const response = await api.get<{ date: string | null }>('/transactions/first-date');
+      return response.data.date;
+    },
+  });
+
   const months = annualQuery.data ?? [];
   const previousMonths = previousAnnualQuery.data ?? [];
 
@@ -182,16 +192,17 @@ export function useDashboardData() {
 
   const categoryBreakdown = buildCategoryBreakdown(categoryBreakdownQuery.data ?? []);
 
-  // Não mostra meses anteriores à criação da conta (não existiam dados
-  // possíveis nesse intervalo). Usa getters UTC para bater com a convenção
-  // de datas já usada no resto do app (ver backend/src/lib/dateFilter.ts).
-  const createdAt = user?.createdAt ? new Date(user.createdAt) : null;
+  // Não mostra meses anteriores ao primeiro lançamento registrado (não à
+  // criação da conta — a conta pode ser bem mais antiga que o primeiro
+  // gasto de fato). Usa getters UTC para bater com a convenção de datas já
+  // usada no resto do app (ver backend/src/lib/dateFilter.ts).
+  const firstTransactionDate = firstTransactionDateQuery.data ? new Date(firstTransactionDateQuery.data) : null;
   const visibleMonths = months.filter((m) => {
-    if (!createdAt) return true;
-    const createdYear = createdAt.getUTCFullYear();
-    if (year > createdYear) return true;
-    if (year < createdYear) return false;
-    return m.month >= createdAt.getUTCMonth() + 1;
+    if (!firstTransactionDate) return true;
+    const firstYear = firstTransactionDate.getUTCFullYear();
+    if (year > firstYear) return true;
+    if (year < firstYear) return false;
+    return m.month >= firstTransactionDate.getUTCMonth() + 1;
   });
 
   const evolutionData = visibleMonths.map((m) => ({
