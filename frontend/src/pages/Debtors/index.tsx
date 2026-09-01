@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Button,
@@ -92,10 +93,8 @@ const formatDate = (dateString: string) => {
 
 export const Debtors: React.FC = () => {
   const theme = useTheme();
+  const queryClient = useQueryClient();
 
-  const [debtors, setDebtors] = useState<Debtor[]>([]);
-  const [summary, setSummary] = useState<DebtorSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -110,38 +109,36 @@ export const Debtors: React.FC = () => {
   const { month, year, viewMode } = usePeriod();
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
 
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
-      // inteiro (o backend aceita "year" sozinho para esse caso).
-      const periodParams = viewMode === "monthly" ? { month, year } : { year };
-      const [debtorsRes, summaryRes] = await Promise.all([
-        api.get("/debtors", {
-          params: {
-            ...periodParams,
-            ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
-            page,
-            limit: PAGE_SIZE,
-          },
-        }),
-        api.get("/debtors/summary", { params: periodParams }),
-      ]);
-      setDebtors(debtorsRes.data.data);
-      setTotalPages(debtorsRes.data.totalPages);
-      setSummary(summaryRes.data);
-    } catch {
-      notify("Erro ao carregar devedores. Tente novamente.", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [statusFilter, month, year, viewMode, page]);
+  // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano inteiro
+  // (o backend aceita "year" sozinho para esse caso).
+  const periodParams = viewMode === "monthly" ? { month, year } : { year };
+  const listParams = {
+    ...periodParams,
+    ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
+    page,
+    limit: PAGE_SIZE,
+  };
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const { data: listData, isLoading } = useQuery({
+    queryKey: ["debtors", "list", listParams],
+    queryFn: async () => {
+      const response = await api.get("/debtors", { params: listParams });
+      return response.data as { data: Debtor[]; totalPages: number };
+    },
+    placeholderData: (previous) => previous,
+  });
+
+  const { data: summary = null } = useQuery({
+    queryKey: ["debtors", "summary", periodParams],
+    queryFn: async () => {
+      const response = await api.get("/debtors/summary", { params: periodParams });
+      return response.data as DebtorSummary;
+    },
+  });
+
+  const debtors = listData?.data ?? [];
+  const totalPages = listData?.totalPages ?? 1;
 
   // Muda filtro ou período reseta a página, que pode não existir mais no
   // novo recorte.
@@ -153,7 +150,10 @@ export const Debtors: React.FC = () => {
     try {
       await api.post("/debtors", data);
       notify("Divisão registrada com sucesso!", "success");
-      loadData();
+      // A divisão também gera um lançamento (quando "incluir minha parte"
+      // está ativo), então invalida transações além de devedores.
+      queryClient.invalidateQueries({ queryKey: ["debtors"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
     } catch {
       notify("Erro ao registrar divisão. Tente novamente.", "error");
     }
@@ -164,17 +164,20 @@ export const Debtors: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
-    const previousDebtors = debtors;
+    const listQueryKey = ["debtors", "list", listParams];
+    const previousData = queryClient.getQueryData(listQueryKey);
 
-    setDebtors((prev) => prev.filter((d) => d.id !== idToDelete));
+    queryClient.setQueryData(listQueryKey, (prev: typeof listData) =>
+      prev ? { ...prev, data: prev.data.filter((d) => d.id !== idToDelete) } : prev
+    );
     setDeleteId(null);
 
     try {
       await api.delete(`/debtors/${idToDelete}`);
       notify("Devedor excluído com sucesso!", "success");
-      loadData();
+      queryClient.invalidateQueries({ queryKey: ["debtors"] });
     } catch {
-      setDebtors(previousDebtors);
+      queryClient.setQueryData(listQueryKey, previousData);
       notify("Erro ao excluir devedor.", "error");
     }
   };
@@ -185,7 +188,7 @@ export const Debtors: React.FC = () => {
       await api.put(`/debtors/${editStatusDebtor.id}`, { status: newStatus });
       notify("Status atualizado com sucesso!", "success");
       setEditStatusDebtor(null);
-      loadData();
+      queryClient.invalidateQueries({ queryKey: ["debtors"] });
     } catch {
       notify("Erro ao atualizar status.", "error");
     }

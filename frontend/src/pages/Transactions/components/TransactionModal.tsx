@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
-import { api } from '../../../services/api';
+import { useCategories } from '../../../hooks/useCategories';
 
 export interface NewTransactionData {
   description: string;
@@ -43,11 +43,6 @@ interface TransactionModalProps {
   transaction?: EditableTransaction | null;
 }
 
-interface Category {
-  id: string;
-  name: string;
-}
-
 export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClose, onSubmit, transaction }) => {
   const today = new Date().toISOString().split('T')[0];
   const isEditing = Boolean(transaction);
@@ -60,12 +55,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentTotal, setInstallmentTotal] = useState('2');
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
 
-  // Busca as categorias e só então decide o valor do campo: pré-preenche a
-  // partir de "transaction" ao editar, ou reseta para criação. Fica tudo num
-  // único efeito para não haver corrida entre o carregamento e o preenchimento.
+  // Pré-preenche a partir de "transaction" ao editar, ou reseta para criação.
   useEffect(() => {
     if (!open) return;
 
@@ -83,24 +75,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
 
     setIsInstallment(false);
     setInstallmentTotal('2');
-    loadCategories();
   }, [open, transaction]);
 
-  const loadCategories = async () => {
-    try {
-      setIsLoadingCategories(true);
-      const response = await api.get('/categories');
-      setCategories(response.data);
-      setCategory(transaction?.categoryId || response.data[0]?.id || '');
-    } catch (error) {
-      console.error('Erro ao buscar categorias:', error);
-      const fallbackCategories = [{ id: 'fallback', name: 'Outros' }];
-      setCategories(fallbackCategories);
-      setCategory('fallback');
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  };
+  // Categorias vêm do cache compartilhado (já prontas na maioria das
+  // aberturas), então a categoria default é escolhida assim que a lista
+  // chega, em vez de esperar um fetch próprio do modal.
+  useEffect(() => {
+    if (!open || categories.length === 0) return;
+    setCategory(transaction?.categoryId || categories[0]?.id || '');
+  }, [open, transaction, categories]);
 
   const handleTypeChange = (_: React.MouseEvent<HTMLElement>, newType: 'INCOME' | 'EXPENSE' | null) => {
     if (newType !== null) {
