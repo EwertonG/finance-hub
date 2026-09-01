@@ -5,7 +5,7 @@ import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 export async function createRecurrence(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { description, type, categoryId, startDate, kind, installmentTotal, totalAmount, amount } = req.body;
+    const { description, type, categoryId, startDate, kind, installmentTotal, totalAmount, amount, startInstallmentNumber } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -48,6 +48,14 @@ export async function createRecurrence(req: Request, res: Response) {
         return res.status(400).json({ error: 'O valor total deve ser um número positivo.' });
       }
 
+      // Permite registrar uma compra parcelada que já está em andamento (ex:
+      // parcelou antes de usar o app, já está na parcela 8 de 10): só gera
+      // as parcelas a partir da informada, sem recriar as anteriores.
+      const startInstallment = startInstallmentNumber ? parseInt(String(startInstallmentNumber), 10) : 1;
+      if (!startInstallment || startInstallment < 1 || startInstallment > total) {
+        return res.status(400).json({ error: 'A parcela atual deve estar entre 1 e o total de parcelas.' });
+      }
+
       const installmentAmount = Number((totalAmountNumber / total).toFixed(2));
 
       const recurrence = await prisma.recurrence.create({
@@ -63,25 +71,27 @@ export async function createRecurrence(req: Request, res: Response) {
         },
       });
 
-      // Total já é conhecido de antemão, então todas as parcelas são
-      // criadas de uma vez (diferente da assinatura, que não tem fim).
-      // Datas são UTC-meia-noite; usar getters locais deslocaria o dia.
+      // Parcelas restantes (a partir de startInstallment) são criadas de uma
+      // vez, já que o total é conhecido de antemão (diferente da assinatura,
+      // que não tem fim). Datas são UTC-meia-noite; usar getters locais
+      // deslocaria o dia.
       const startYear = start.getUTCFullYear();
       const startMonth = start.getUTCMonth();
       const startDay = start.getUTCDate();
 
-      const transactionsData = Array.from({ length: total }, (_, i) => {
+      const remainingInstallments = total - startInstallment + 1;
+      const transactionsData = Array.from({ length: remainingInstallments }, (_, i) => {
         const month = startMonth + i;
         const daysInMonth = new Date(Date.UTC(startYear, month + 1, 0)).getUTCDate();
         return {
-          description: `${description} (${i + 1}/${total})`,
+          description,
           amount: installmentAmount,
           date: new Date(Date.UTC(startYear, month, Math.min(startDay, daysInMonth))),
           type,
           userId,
           categoryId: categoryId ? String(categoryId) : null,
           recurrenceId: recurrence.id,
-          installmentNumber: i + 1,
+          installmentNumber: startInstallment + i,
         };
       });
 
