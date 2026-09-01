@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { hashPassword, comparePassword } from '../utils/hash.js';
 import { generateToken } from '../utils/jwt.js';
+import { DEFAULT_CATEGORIES } from '../constants/defaultCategories.js';
 
 /* Cadastro */
 export async function register(req: Request, res: Response) {
@@ -34,6 +35,10 @@ export async function register(req: Request, res: Response) {
         email: true,
         createdAt: true,
       },
+    });
+
+    await prisma.category.createMany({
+      data: DEFAULT_CATEGORIES.map((category) => ({ ...category, userId: user.id })),
     });
 
     const token = generateToken({ userId: user.id });
