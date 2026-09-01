@@ -1,12 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 
-function summarizeGoal(goal: { targetAmount: unknown; contributions: { amount: unknown; type: string }[] }) {
-  const currentAmount = goal.contributions.reduce((sum, c) => {
-    const amount = Number(c.amount);
-    return c.type === 'DEPOSIT' ? sum + amount : sum - amount;
-  }, 0);
-
+function summarizeGoal(goal: { targetAmount: unknown }, currentAmount: number) {
   const targetAmount = Number(goal.targetAmount);
   const progress = targetAmount > 0 ? Math.min(100, (currentAmount / targetAmount) * 100) : 0;
 
@@ -62,13 +57,25 @@ export async function listGoals(req: Request, res: Response) {
 
     const goals = await prisma.goal.findMany({
       where: { userId },
-      include: { contributions: { select: { amount: true, type: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
-    const goalsWithSummary = goals.map(({ contributions, ...goal }) => ({
+    const contributionTotals = await prisma.goalContribution.groupBy({
+      by: ['goalId', 'type'],
+      where: { goalId: { in: goals.map((g) => g.id) } },
+      _sum: { amount: true },
+    });
+
+    const currentAmountByGoal = new Map<string, number>();
+    contributionTotals.forEach((t) => {
+      const amount = Number(t._sum.amount ?? 0);
+      const delta = t.type === 'DEPOSIT' ? amount : -amount;
+      currentAmountByGoal.set(t.goalId, (currentAmountByGoal.get(t.goalId) ?? 0) + delta);
+    });
+
+    const goalsWithSummary = goals.map((goal) => ({
       ...goal,
-      ...summarizeGoal({ targetAmount: goal.targetAmount, contributions }),
+      ...summarizeGoal(goal, currentAmountByGoal.get(goal.id) ?? 0),
     }));
 
     return res.json(goalsWithSummary);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Button,
@@ -12,6 +12,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import { useQueryClient } from '@tanstack/react-query';
 
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
@@ -20,27 +21,19 @@ import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 
 import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useCategories, type Category } from '../../hooks/useCategories';
 
 import { CategoryModal } from './components/CategoryModal';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { getCategoryIconComponent } from '../../constants/categoryIcons';
 
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-  type: 'INCOME' | 'EXPENSE';
-  createdAt: string;
-}
-
 export const Categories = () => {
   const theme = useTheme();
+  const queryClient = useQueryClient();
+  const categoriesQueryKey = ['categories', 'ALL'];
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: categories = [], isLoading, isError, refetch } = useCategories();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -54,9 +47,9 @@ export const Categories = () => {
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
-    const previousCategories = categories;
+    const previousCategories = queryClient.getQueryData<Category[]>(categoriesQueryKey);
 
-    setCategories((prev) => prev.filter((c) => c.id !== idToDelete));
+    queryClient.setQueryData<Category[]>(categoriesQueryKey, (prev = []) => prev.filter((c) => c.id !== idToDelete));
     setDeleteId(null);
 
     try {
@@ -64,29 +57,10 @@ export const Categories = () => {
       notify('Categoria excluída com sucesso!', 'success');
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
-      setCategories(previousCategories);
+      queryClient.setQueryData(categoriesQueryKey, previousCategories);
       notify('Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.', 'error');
     }
   };
-
-  const loadCategories = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-      const response = await api.get<Category[]>('/categories');
-      setCategories(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar categorias:', error);
-      setError('Não foi possível carregar suas categorias.');
-      notify('Erro ao carregar categorias. Tente novamente.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadCategories();
-  }, []);
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -97,16 +71,12 @@ export const Categories = () => {
     setIsModalOpen(false);
   };
 
-  // Usa a resposta da própria chamada de criar/editar pra atualizar a lista
-  // local, sem precisar buscar tudo de novo no servidor.
-  const handleCategorySaved = (savedCategory: Category) => {
-    setCategories((prev) => {
-      const exists = prev.some((c) => c.id === savedCategory.id);
-      return exists
-        ? prev.map((c) => (c.id === savedCategory.id ? savedCategory : c))
-        : [...prev, savedCategory];
-    });
-
+  // A categoria criada/editada já muda de tipo (INCOME/EXPENSE) livremente,
+  // então em vez de tentar corrigir cada variante de cache ('ALL', 'INCOME',
+  // 'EXPENSE') na mão, invalida todas — o refetch é local e rápido, e a
+  // página mantém os dados antigos na tela enquanto isso acontece.
+  const handleCategorySaved = () => {
+    queryClient.invalidateQueries({ queryKey: ['categories'] });
     notify(selectedCategory ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!', 'success');
   };
 
@@ -115,11 +85,11 @@ export const Categories = () => {
     setIsModalOpen(true);
   };
 
-  if (error) {
+  if (isError) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 240, gap: 2 }}>
-        <Typography color="error">{error}</Typography>
-        <Button variant="outlined" onClick={loadCategories}>Tentar novamente</Button>
+        <Typography color="error">Não foi possível carregar suas categorias.</Typography>
+        <Button variant="outlined" onClick={() => refetch()}>Tentar novamente</Button>
       </Box>
     );
   }

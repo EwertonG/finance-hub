@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
@@ -82,7 +83,10 @@ export async function listTransactions(req: Request, res: Response) {
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        include: { category: true, recurrence: true },
+        include: {
+          category: { select: { id: true, name: true, color: true, icon: true } },
+          recurrence: { select: { kind: true, installmentTotal: true } },
+        },
         orderBy: { date: 'desc' },
         ...(parsedLimit ? { skip: (parsedPage - 1) * parsedLimit, take: parsedLimit } : {}),
       }),
@@ -116,10 +120,12 @@ export async function getTransactionSummary(req: Request, res: Response) {
     const currentYear = year ? parseInt(String(year), 10) : new Date().getFullYear();
     const currentMonth = month ? parseInt(String(month), 10) : new Date().getMonth() + 1;
 
-    const startDate = new Date(currentYear, currentMonth - 1, 1);
-    const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+    // UTC: datas são armazenadas em UTC-meia-noite (ver lib/recurrence.ts).
+    const startDate = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+    const endDate = new Date(Date.UTC(currentYear, currentMonth, 0, 23, 59, 59, 999));
 
-    const transactions = await prisma.transaction.findMany({
+    const totals = await prisma.transaction.groupBy({
+      by: ['type'],
       where: {
         userId,
         date: {
@@ -127,20 +133,11 @@ export async function getTransactionSummary(req: Request, res: Response) {
           lte: endDate,
         },
       },
+      _sum: { amount: true },
     });
 
-    let totalIncome = 0;
-    let totalExpense = 0;
-
-    transactions.forEach((tx) => {
-      const amountNumber = Number(tx.amount);
-      if (tx.type === 'INCOME') {
-        totalIncome += amountNumber;
-      } else {
-        totalExpense += amountNumber;
-      }
-    });
-
+    const totalIncome = Number(totals.find((t) => t.type === 'INCOME')?._sum.amount ?? 0);
+    const totalExpense = Number(totals.find((t) => t.type === 'EXPENSE')?._sum.amount ?? 0);
     const balance = totalIncome - totalExpense;
 
     return res.json({
@@ -169,18 +166,20 @@ export async function getAnnualSummary(req: Request, res: Response) {
 
     const currentYear = year ? parseInt(String(year), 10) : new Date().getFullYear();
 
-    const startDate = new Date(currentYear, 0, 1);
-    const endDate = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+    // UTC: datas são armazenadas em UTC-meia-noite (ver lib/recurrence.ts).
+    const startDate = new Date(Date.UTC(currentYear, 0, 1));
+    const endDate = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59, 999));
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-    });
+    // Agregado no banco (SUM + GROUP BY mês/tipo) em vez de trazer o ano
+    // inteiro de transações para somar em JS.
+    const rows = await prisma.$queryRaw<Array<{ month: number; type: 'INCOME' | 'EXPENSE'; total: string | number }>>(
+      Prisma.sql`
+        SELECT EXTRACT(MONTH FROM date)::int AS month, type, SUM(amount) AS total
+        FROM transactions
+        WHERE user_id = ${userId} AND date >= ${startDate} AND date <= ${endDate}
+        GROUP BY month, type
+      `
+    );
 
     // Inicializa os 12 meses com totais zerados para que o gráfico do
     // frontend sempre receba um array completo, mesmo sem lançamentos.
@@ -191,14 +190,14 @@ export async function getAnnualSummary(req: Request, res: Response) {
       balance: 0,
     }));
 
-    transactions.forEach((tx) => {
-      const monthIndex = tx.date.getMonth();
-      const amountNumber = Number(tx.amount);
+    rows.forEach((row) => {
+      const monthIndex = row.month - 1;
+      const amountNumber = Number(row.total);
 
-      if (tx.type === 'INCOME') {
-        months[monthIndex].totalIncome += amountNumber;
+      if (row.type === 'INCOME') {
+        months[monthIndex].totalIncome = amountNumber;
       } else {
-        months[monthIndex].totalExpense += amountNumber;
+        months[monthIndex].totalExpense = amountNumber;
       }
     });
 
@@ -300,5 +299,47 @@ export async function deleteTransaction(req: Request, res: Response) {
   } catch (error) {
     console.error('Erro ao deletar transação:', error);
     return res.status(500).json({ error: 'Erro interno ao deletar transação.' });
+  }
+}
+
+// Visão sempre geral (não acompanha o período selecionado no dashboard),
+// então soma no banco por categoria em vez de trazer o histórico inteiro
+// de transações só para agrupar em JS.
+export async function getCategoryBreakdown(req: Request, res: Response) {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuário não autenticado.' });
+    }
+
+    const totals = await prisma.transaction.groupBy({
+      by: ['categoryId'],
+      where: { userId, type: 'EXPENSE' },
+      _sum: { amount: true },
+    });
+
+    const categoryIds = totals.map((t) => t.categoryId).filter((id): id is string => id !== null);
+    const categories = await prisma.category.findMany({
+      where: { id: { in: categoryIds } },
+      select: { id: true, name: true, color: true, icon: true },
+    });
+    const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+    const breakdown = totals.map((t) => {
+      const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
+      return {
+        categoryId: t.categoryId,
+        name: category?.name ?? 'Sem categoria',
+        color: category?.color ?? '#6B7280',
+        icon: category?.icon ?? 'MoreHorizRounded',
+        amount: Number(t._sum.amount ?? 0),
+      };
+    });
+
+    return res.json(breakdown);
+  } catch (error) {
+    console.error('Erro ao calcular gastos por categoria:', error);
+    return res.status(500).json({ error: 'Erro interno ao calcular gastos por categoria.' });
   }
 }
