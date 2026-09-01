@@ -4,8 +4,8 @@ import { useDashboardData } from './hooks/useDashboardData';
 import { MONTH_LABELS } from './utils';
 import { SummaryCards } from './components/SummaryCards';
 import { EvolutionChart } from './components/EvolutionChart';
-import { DebtorsSummaryCards } from './components/DebtorsSummaryCards';
-import { GoalsSubscriptionsWidget } from './components/GoalsSubscriptionsWidget';
+import { CommitmentsSummary } from './components/CommitmentsSummary';
+import { GoalsSection } from './components/GoalsSection';
 import { RecentTransactionsTable } from './components/RecentTransactionsTable';
 import { CategoryBreakdownChart } from './components/CategoryBreakdownChart';
 
@@ -36,21 +36,21 @@ export const Dashboard: React.FC = () => {
 
       <EvolutionChart loading={loading} year={year} data={evolutionData} />
 
-      <DebtorsSummaryCards loading={loading} debtorsSummary={debtorsSummary} />
-
-      <GoalsSubscriptionsWidget
-        goalsLoading={goalsLoading}
-        goals={goals}
+      <CommitmentsSummary
+        debtorsLoading={loading}
+        debtorsSummary={debtorsSummary}
         subscriptionsLoading={subscriptionsLoading}
         subscriptions={subscriptions}
       />
+
+      <GoalsSection loading={goalsLoading} goals={goals} />
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 7 }}>
           <RecentTransactionsTable loading={loading} transactions={periodTransactions} />
         </Grid>
         <Grid size={{ xs: 12, md: 5 }}>
-          <CategoryBreakdownChart loading={categoryLoading} data={categoryBreakdown} />
+          <CategoryBreakdownChart loading={categoryLoading} data={categoryBreakdown} periodLabel={periodLabel} />
         </Grid>
       </Grid>
     </Box>
