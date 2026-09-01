@@ -26,6 +26,7 @@ export interface NewTransactionData {
   categoryId: string;
   date: string;
   installmentTotal?: number;
+  startInstallmentNumber?: number;
   paymentMethod?: PaymentMethod;
 }
 
@@ -57,6 +58,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
   const [date, setDate] = useState(today);
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentTotal, setInstallmentTotal] = useState('2');
+  const [startInstallmentNumber, setStartInstallmentNumber] = useState('1');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
 
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
@@ -81,6 +83,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
 
     setIsInstallment(false);
     setInstallmentTotal('2');
+    setStartInstallmentNumber('1');
   }, [open, transaction]);
 
   // Categorias vêm do cache compartilhado (já prontas na maioria das
@@ -109,7 +112,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       type,
       categoryId: category,
       date,
-      ...(shouldSplitInInstallments ? { installmentTotal: Number(installmentTotal) } : {}),
+      ...(shouldSplitInInstallments
+        ? { installmentTotal: Number(installmentTotal), startInstallmentNumber: Number(startInstallmentNumber) || 1 }
+        : {}),
       ...(paymentMethod ? { paymentMethod } : {}),
     });
 
@@ -186,21 +191,39 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
               />
               {isInstallment && (
-                <TextField
-                  label="Número de parcelas"
-                  type="number"
-                  fullWidth
-                  required
-                  size="small"
-                  slotProps={{ htmlInput: { step: '1', min: '2' } }}
-                  value={installmentTotal}
-                  onChange={(e) => setInstallmentTotal(e.target.value)}
-                  helperText={
-                    amount && Number(installmentTotal) >= 2
-                      ? `${installmentTotal}x de R$ ${(parseFloat(amount) / Number(installmentTotal)).toFixed(2)}`
-                      : ' '
-                  }
-                />
+                <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
+                  <TextField
+                    label="Número de parcelas"
+                    type="number"
+                    fullWidth
+                    required
+                    size="small"
+                    slotProps={{ htmlInput: { step: '1', min: '2' } }}
+                    value={installmentTotal}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setInstallmentTotal(value);
+                      if (Number(startInstallmentNumber) > Number(value)) {
+                        setStartInstallmentNumber(value);
+                      }
+                    }}
+                  />
+                  <TextField
+                    label="Parcela atual"
+                    type="number"
+                    fullWidth
+                    required
+                    size="small"
+                    slotProps={{ htmlInput: { step: '1', min: '1', max: installmentTotal } }}
+                    value={startInstallmentNumber}
+                    onChange={(e) => setStartInstallmentNumber(e.target.value)}
+                    helperText={
+                      amount && Number(installmentTotal) >= 2
+                        ? `${startInstallmentNumber}/${installmentTotal} de R$ ${(parseFloat(amount) / Number(installmentTotal)).toFixed(2)}`
+                        : ' '
+                    }
+                  />
+                </Box>
               )}
             </Box>
           )}

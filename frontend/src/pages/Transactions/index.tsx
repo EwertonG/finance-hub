@@ -144,6 +144,7 @@ export const Transactions: React.FC = () => {
           startDate: data.date,
           kind: 'INSTALLMENT',
           installmentTotal: data.installmentTotal,
+          startInstallmentNumber: data.startInstallmentNumber,
           paymentMethod: data.paymentMethod,
         });
       } else {
