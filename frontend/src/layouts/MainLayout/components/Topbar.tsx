@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Typography, useTheme } from '@mui/material';
+import { Box, IconButton, Typography, useTheme } from '@mui/material';
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import { useLocation } from 'react-router-dom';
 import { PeriodSelector } from './PeriodSelector';
 
@@ -30,7 +31,11 @@ const pageHeaders: Record<string, { title: string; description: string }> = {
   },
 };
 
-export const Topbar: React.FC = () => {
+interface TopbarProps {
+  onMenuClick: () => void;
+}
+
+export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const location = useLocation();
   const theme = useTheme();
 
@@ -53,18 +58,29 @@ export const Topbar: React.FC = () => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 2,
       }}
     >
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
-          {currentHeader.title}
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          {currentHeader.description}
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <IconButton
+          onClick={onMenuClick}
+          aria-label="Abrir menu"
+          sx={{ display: { xs: 'inline-flex', md: 'none' }, color: 'text.primary' }}
+        >
+          <MenuRoundedIcon />
+        </IconButton>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
+            {currentHeader.title}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {currentHeader.description}
+          </Typography>
+        </Box>
       </Box>
       {showPeriodSelector && (
-        <Box>
+        <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <PeriodSelector />
         </Box>
       )}
