@@ -1,8 +1,5 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded';
-import PieChartOutlineRoundedIcon from '@mui/icons-material/PieChartOutlineRounded';
-import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
 import painelImg from '../../../assets/ilustracao-painel.png';
 
 export const AuthSidePanel: React.FC = () => {
