@@ -101,7 +101,6 @@ export const Debtors: React.FC = () => {
 
   // Delete dialog
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Status update dialog
   const [editStatusDebtor, setEditStatusDebtor] = useState<Debtor | null>(null);
@@ -160,19 +159,23 @@ export const Debtors: React.FC = () => {
     }
   };
 
+  // Otimista: some da lista e fecha o diálogo na hora; a paginação
+  // (total/totalPages) é reconciliada em segundo plano após confirmar.
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
+    const idToDelete = deleteId;
+    const previousDebtors = debtors;
+
+    setDebtors((prev) => prev.filter((d) => d.id !== idToDelete));
+    setDeleteId(null);
+
     try {
-      setIsDeleting(true);
-      await api.delete(`/debtors/${deleteId}`);
-      setDebtors((prev) => prev.filter((d) => d.id !== deleteId));
+      await api.delete(`/debtors/${idToDelete}`);
       notify("Devedor excluído com sucesso!", "success");
       loadData();
     } catch {
+      setDebtors(previousDebtors);
       notify("Erro ao excluir devedor.", "error");
-    } finally {
-      setIsDeleting(false);
-      setDeleteId(null);
     }
   };
 
@@ -431,7 +434,6 @@ export const Debtors: React.FC = () => {
         message="Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita."
         onClose={() => setDeleteId(null)}
         onConfirm={handleConfirmDelete}
-        loading={isDeleting}
       />
 
       {/* Edit Status Dialog */}

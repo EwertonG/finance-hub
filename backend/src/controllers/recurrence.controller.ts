@@ -106,6 +106,7 @@ export async function createRecurrence(req: Request, res: Response) {
         userId,
         categoryId: categoryId ? String(categoryId) : null,
       },
+      include: { category: true },
     });
 
     await ensureSubscriptionTransactions(userId);

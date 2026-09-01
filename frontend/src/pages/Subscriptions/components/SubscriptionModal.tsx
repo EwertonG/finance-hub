@@ -16,10 +16,20 @@ import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { api } from '../../../services/api';
 
+export interface Subscription {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'INCOME' | 'EXPENSE';
+  startDate: string;
+  active: boolean;
+  category: { name: string } | null;
+}
+
 interface SubscriptionModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onSaved: (subscription: Subscription) => void;
 }
 
 interface Category {
@@ -27,7 +37,7 @@ interface Category {
   name: string;
 }
 
-export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onClose, onCreated }) => {
+export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onClose, onSaved }) => {
   const today = new Date().toISOString().split('T')[0];
 
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
@@ -75,7 +85,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
 
     try {
       setIsSubmitting(true);
-      await api.post('/recurrences', {
+      const response = await api.post('/recurrences', {
         description,
         amount: parseFloat(amount),
         type,
@@ -83,7 +93,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
         startDate,
         kind: 'SUBSCRIPTION',
       });
-      onCreated();
+      onSaved(response.data);
       onClose();
     } catch (error) {
       console.error('Erro ao criar assinatura:', error);
