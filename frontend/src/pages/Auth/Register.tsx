@@ -16,12 +16,13 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
 import logoImg from '../../assets/logo.png';
 
-
 export const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -36,8 +37,10 @@ export const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      await api.post('/auth/register', { name, email, password });
-      navigate('/login');
+      const response = await api.post('/auth/register', { name, email, password });
+      const { token, user } = response.data;
+      signIn(token, user);
+      navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erro ao criar conta. Tente novamente.');
     } finally {
