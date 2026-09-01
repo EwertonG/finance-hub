@@ -9,15 +9,16 @@ import type { CategoryBreakdownItem } from '../types';
 interface CategoryBreakdownChartProps {
   loading: boolean;
   data: CategoryBreakdownItem[];
+  periodLabel: string;
 }
 
-export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ loading, data }) => {
+export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ loading, data, periodLabel }) => {
   const theme = useTheme();
 
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 2 }}>
-        Gastos por Categoria
+        Gastos por Categoria · {periodLabel}
       </Typography>
       {loading ? (
         <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, p: 3 }}>
