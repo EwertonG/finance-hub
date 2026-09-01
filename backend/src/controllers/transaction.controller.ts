@@ -302,12 +302,13 @@ export async function deleteTransaction(req: Request, res: Response) {
   }
 }
 
-// Visão sempre geral (não acompanha o período selecionado no dashboard),
-// então soma no banco por categoria em vez de trazer o histórico inteiro
-// de transações só para agrupar em JS.
+// Segue o mesmo período (month/year) selecionado no dashboard, somando no
+// banco por categoria em vez de trazer as transações inteiras para agrupar
+// em JS.
 export async function getCategoryBreakdown(req: Request, res: Response) {
   try {
     const userId = req.userId;
+    const { month, year } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -315,7 +316,7 @@ export async function getCategoryBreakdown(req: Request, res: Response) {
 
     const totals = await prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: { userId, type: 'EXPENSE' },
+      where: { userId, type: 'EXPENSE', ...buildDateFilter(month, year) },
       _sum: { amount: true },
     });
 
