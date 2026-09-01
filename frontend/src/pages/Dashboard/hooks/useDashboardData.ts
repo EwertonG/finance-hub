@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { usePeriod } from '../../../contexts/PeriodContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import { MONTH_LABELS } from '../utils';
 import type {
   Summary,
@@ -60,6 +61,7 @@ interface AnnualSummaryResponse {
 
 export function useDashboardData() {
   const { month, year, viewMode } = usePeriod();
+  const { user } = useAuth();
 
   // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano inteiro
   // (o backend aceita "year" sozinho para esse caso). Mesmo formato de
@@ -109,9 +111,9 @@ export function useDashboardData() {
   });
 
   const categoryBreakdownQuery = useQuery({
-    queryKey: ['transactions', 'category-breakdown'],
+    queryKey: ['transactions', 'category-breakdown', periodParams],
     queryFn: async () => {
-      const response = await api.get<CategoryBreakdownRow[]>('/transactions/category-breakdown');
+      const response = await api.get<CategoryBreakdownRow[]>('/transactions/category-breakdown', { params: periodParams });
       return response.data;
     },
   });
@@ -180,7 +182,19 @@ export function useDashboardData() {
 
   const categoryBreakdown = buildCategoryBreakdown(categoryBreakdownQuery.data ?? []);
 
-  const evolutionData = months.map((m) => ({
+  // Não mostra meses anteriores à criação da conta (não existiam dados
+  // possíveis nesse intervalo). Usa getters UTC para bater com a convenção
+  // de datas já usada no resto do app (ver backend/src/lib/dateFilter.ts).
+  const createdAt = user?.createdAt ? new Date(user.createdAt) : null;
+  const visibleMonths = months.filter((m) => {
+    if (!createdAt) return true;
+    const createdYear = createdAt.getUTCFullYear();
+    if (year > createdYear) return true;
+    if (year < createdYear) return false;
+    return m.month >= createdAt.getUTCMonth() + 1;
+  });
+
+  const evolutionData = visibleMonths.map((m) => ({
     monthLabel: MONTH_LABELS[m.month - 1],
     Receita: m.totalIncome,
     Despesa: m.totalExpense,
