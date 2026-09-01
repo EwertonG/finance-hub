@@ -16,12 +16,17 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
 import logoImg from '../../assets/logo.png';
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PASSWORD_REQUIREMENTS_MESSAGE =
+  'A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -33,11 +38,19 @@ export const Register: React.FC = () => {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!PASSWORD_REGEX.test(password)) {
+      setError(PASSWORD_REQUIREMENTS_MESSAGE);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await api.post('/auth/register', { name, email, password });
-      navigate('/login');
+      const response = await api.post('/auth/register', { name, email, password });
+      const { token, user } = response.data;
+      signIn(token, user);
+      navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erro ao criar conta. Tente novamente.');
     } finally {
@@ -164,6 +177,7 @@ export const Register: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                helperText="Mín. 8 caracteres, com maiúscula, minúscula, número e símbolo"
                 slotProps={{
                   input: {
                     startAdornment: (
