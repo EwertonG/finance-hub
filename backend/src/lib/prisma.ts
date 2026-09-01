@@ -13,7 +13,7 @@ const connectionString = process.env.DATABASE_URL?.includes('uselibpqcompat')
 
 const pool = new pg.Pool({
   connectionString,
-  max: 5,
+  max: 10,
   connectionTimeoutMillis: 15000,
   idleTimeoutMillis: 30000,
 });

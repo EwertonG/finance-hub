@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { usePeriod } from '../../../contexts/PeriodContext';
 import { MONTH_LABELS } from '../utils';
@@ -25,21 +25,19 @@ const EMPTY_DEBTOR_SUMMARY: DebtorSummary = {
 // restante em "Outros", evitando um eixo Y com dezenas de barras.
 const MAX_CATEGORY_BARS = 7;
 
-function buildCategoryBreakdown(transactions: Transaction[]): CategoryBreakdownItem[] {
-  const expenses = transactions.filter((tx) => tx.type === 'EXPENSE');
-  const totalExpenses = expenses.reduce((sum, tx) => sum + Number(tx.amount), 0);
+interface CategoryBreakdownRow {
+  name: string;
+  amount: number;
+}
 
-  const categoryMap: Record<string, number> = {};
-  expenses.forEach((tx) => {
-    const catName = tx.category?.name || 'Sem categoria';
-    categoryMap[catName] = (categoryMap[catName] || 0) + Number(tx.amount);
-  });
+function buildCategoryBreakdown(rows: CategoryBreakdownRow[]): CategoryBreakdownItem[] {
+  const totalExpenses = rows.reduce((sum, row) => sum + row.amount, 0);
 
-  const sorted = Object.entries(categoryMap)
-    .map(([name, amount]) => ({
-      name,
-      amount,
-      percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0,
+  const sorted = rows
+    .map((row) => ({
+      name: row.name,
+      amount: row.amount,
+      percentage: totalExpenses > 0 ? (row.amount / totalExpenses) * 100 : 0,
     }))
     .sort((a, b) => b.amount - a.amount);
 
@@ -56,131 +54,133 @@ function buildCategoryBreakdown(transactions: Transaction[]): CategoryBreakdownI
   ];
 }
 
+interface AnnualSummaryResponse {
+  months: MonthSummary[];
+}
+
 export function useDashboardData() {
   const { month, year, viewMode } = usePeriod();
 
-  const [summary, setSummary] = useState<Summary>(EMPTY_SUMMARY);
-  const [previousSummary, setPreviousSummary] = useState<Summary>(EMPTY_SUMMARY);
-  const [annualSummary, setAnnualSummary] = useState<MonthSummary[]>([]);
-  const [debtorsSummary, setDebtorsSummary] = useState<DebtorSummary>(EMPTY_DEBTOR_SUMMARY);
-  const [periodTransactions, setPeriodTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano inteiro
+  // (o backend aceita "year" sozinho para esse caso). Mesmo formato de
+  // params usado pelas páginas de Transações/Devedores, então o cache é
+  // compartilhado quando o período coincide.
+  const periodParams = viewMode === 'monthly' ? { month, year } : { year };
 
-  const [categoryTransactions, setCategoryTransactions] = useState<Transaction[]>([]);
-  const [categoryLoading, setCategoryLoading] = useState(true);
+  const annualQuery = useQuery({
+    queryKey: ['transactions', 'annual-summary', year],
+    queryFn: async () => {
+      const response = await api.get<AnnualSummaryResponse>('/transactions/annual-summary', { params: { year } });
+      return response.data.months;
+    },
+  });
 
-  const [goals, setGoals] = useState<GoalSummary[]>([]);
-  const [goalsLoading, setGoalsLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState<SubscriptionSummary[]>([]);
-  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+  const previousAnnualQuery = useQuery({
+    queryKey: ['transactions', 'annual-summary', year - 1],
+    queryFn: async () => {
+      const response = await api.get<AnnualSummaryResponse>('/transactions/annual-summary', { params: { year: year - 1 } });
+      return response.data.months;
+    },
+  });
 
-  // Gastos por categoria, metas e assinaturas não acompanham o período
-  // selecionado (visão sempre geral), então são buscados uma única vez, fora
-  // do fluxo de recarga por período.
-  useEffect(() => {
-    api
-      .get('/transactions')
-      .then((res) => setCategoryTransactions(res.data.data))
-      .catch((error) => console.error('Erro ao buscar transações para o gráfico de categorias', error))
-      .finally(() => setCategoryLoading(false));
+  const periodTransactionsQuery = useQuery({
+    queryKey: ['transactions', 'list', periodParams],
+    queryFn: async () => {
+      const response = await api.get('/transactions', { params: periodParams });
+      return response.data.data as Transaction[];
+    },
+  });
 
-    api
-      .get('/goals')
-      .then((res) => setGoals(res.data))
-      .catch((error) => console.error('Erro ao buscar metas', error))
-      .finally(() => setGoalsLoading(false));
+  const debtorsSummaryQuery = useQuery({
+    queryKey: ['debtors', 'summary', periodParams],
+    queryFn: async () => {
+      const response = await api.get<DebtorSummary>('/debtors/summary', { params: periodParams });
+      return response.data;
+    },
+  });
 
-    api
-      .get('/recurrences', { params: { kind: 'SUBSCRIPTION' } })
-      .then((res) => setSubscriptions(res.data))
-      .catch((error) => console.error('Erro ao buscar assinaturas', error))
-      .finally(() => setSubscriptionsLoading(false));
-  }, []);
+  const monthlySummaryQuery = useQuery({
+    queryKey: ['transactions', 'summary', month, year],
+    queryFn: async () => {
+      const response = await api.get('/transactions/summary', { params: { month, year } });
+      return response.data as { totalIncome: number; totalExpense: number; balance: number };
+    },
+    enabled: viewMode === 'monthly',
+  });
 
-  const loadDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
+  const categoryBreakdownQuery = useQuery({
+    queryKey: ['transactions', 'category-breakdown'],
+    queryFn: async () => {
+      const response = await api.get<CategoryBreakdownRow[]>('/transactions/category-breakdown');
+      return response.data;
+    },
+  });
 
-      // O gráfico de evolução é sempre anual, então busca o ano do período
-      // atual independentemente do viewMode selecionado. Também busca o ano
-      // anterior, necessário para a comparação "vs período anterior" (cobre
-      // o caso de janeiro comparando com dezembro do ano anterior).
-      const [annualRes, previousAnnualRes] = await Promise.all([
-        api.get('/transactions/annual-summary', { params: { year } }),
-        api.get('/transactions/annual-summary', { params: { year: year - 1 } }),
-      ]);
-      const months: MonthSummary[] = annualRes.data.months;
-      const previousMonths: MonthSummary[] = previousAnnualRes.data.months;
-      setAnnualSummary(months);
+  const goalsQuery = useQuery({
+    queryKey: ['goals'],
+    queryFn: async () => {
+      const response = await api.get<GoalSummary[]>('/goals');
+      return response.data;
+    },
+  });
 
-      // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano
-      // inteiro (o backend aceita "year" sozinho para esse caso).
-      const periodParams = viewMode === 'monthly' ? { month, year } : { year };
+  const subscriptionsQuery = useQuery({
+    queryKey: ['recurrences', 'SUBSCRIPTION'],
+    queryFn: async () => {
+      const response = await api.get<SubscriptionSummary[]>('/recurrences', { params: { kind: 'SUBSCRIPTION' } });
+      return response.data;
+    },
+  });
 
-      const [transactionsRes, debtorsSummaryRes] = await Promise.all([
-        api.get('/transactions', { params: periodParams }),
-        api.get('/debtors/summary', { params: periodParams }),
-      ]);
+  const months = annualQuery.data ?? [];
+  const previousMonths = previousAnnualQuery.data ?? [];
 
-      setPeriodTransactions(transactionsRes.data.data);
-      setDebtorsSummary(debtorsSummaryRes.data);
+  const loading =
+    annualQuery.isLoading ||
+    previousAnnualQuery.isLoading ||
+    periodTransactionsQuery.isLoading ||
+    debtorsSummaryQuery.isLoading ||
+    (viewMode === 'monthly' && monthlySummaryQuery.isLoading);
 
-      if (viewMode === 'monthly') {
-        const summaryRes = await api.get('/transactions/summary', { params: { month, year } });
-        const { totalIncome, totalExpense, balance } = summaryRes.data;
-        setSummary({ income: totalIncome, expense: totalExpense, total: balance });
-      } else {
-        const yearTotals = months.reduce(
-          (acc, m) => ({
-            income: acc.income + m.totalIncome,
-            expense: acc.expense + m.totalExpense,
-          }),
-          { income: 0, expense: 0 }
-        );
-        setSummary({
-          income: yearTotals.income,
-          expense: yearTotals.expense,
-          total: yearTotals.income - yearTotals.expense,
-        });
-      }
+  let summary = EMPTY_SUMMARY;
+  let previousSummary = EMPTY_SUMMARY;
+
+  if (!loading && months.length === 12 && previousMonths.length === 12) {
+    if (viewMode === 'monthly' && monthlySummaryQuery.data) {
+      const { totalIncome, totalExpense, balance } = monthlySummaryQuery.data;
+      summary = { income: totalIncome, expense: totalExpense, total: balance };
 
       // Período anterior: mês anterior (ou dezembro do ano anterior, se
-      // janeiro) no modo mensal; ano anterior inteiro no modo anual.
-      if (viewMode === 'monthly') {
-        const previousMonthData = month === 1 ? previousMonths[11] : months[month - 2];
-        setPreviousSummary({
-          income: previousMonthData.totalIncome,
-          expense: previousMonthData.totalExpense,
-          total: previousMonthData.balance,
-        });
-      } else {
-        const previousYearTotals = previousMonths.reduce(
-          (acc, m) => ({
-            income: acc.income + m.totalIncome,
-            expense: acc.expense + m.totalExpense,
-          }),
-          { income: 0, expense: 0 }
-        );
-        setPreviousSummary({
-          income: previousYearTotals.income,
-          expense: previousYearTotals.expense,
-          total: previousYearTotals.income - previousYearTotals.expense,
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao buscar dados do dashboard', error);
-    } finally {
-      setLoading(false);
+      // janeiro) no modo mensal.
+      const previousMonthData = month === 1 ? previousMonths[11] : months[month - 2];
+      previousSummary = {
+        income: previousMonthData.totalIncome,
+        expense: previousMonthData.totalExpense,
+        total: previousMonthData.balance,
+      };
+    } else if (viewMode !== 'monthly') {
+      const yearTotals = months.reduce(
+        (acc, m) => ({ income: acc.income + m.totalIncome, expense: acc.expense + m.totalExpense }),
+        { income: 0, expense: 0 }
+      );
+      summary = { income: yearTotals.income, expense: yearTotals.expense, total: yearTotals.income - yearTotals.expense };
+
+      // Período anterior: ano anterior inteiro no modo anual.
+      const previousYearTotals = previousMonths.reduce(
+        (acc, m) => ({ income: acc.income + m.totalIncome, expense: acc.expense + m.totalExpense }),
+        { income: 0, expense: 0 }
+      );
+      previousSummary = {
+        income: previousYearTotals.income,
+        expense: previousYearTotals.expense,
+        total: previousYearTotals.income - previousYearTotals.expense,
+      };
     }
-  }, [month, year, viewMode]);
+  }
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+  const categoryBreakdown = buildCategoryBreakdown(categoryBreakdownQuery.data ?? []);
 
-  const categoryBreakdown = buildCategoryBreakdown(categoryTransactions);
-
-  const evolutionData = annualSummary.map((m) => ({
+  const evolutionData = months.map((m) => ({
     monthLabel: MONTH_LABELS[m.month - 1],
     Receita: m.totalIncome,
     Despesa: m.totalExpense,
@@ -193,14 +193,14 @@ export function useDashboardData() {
     loading,
     summary,
     previousSummary,
-    debtorsSummary,
-    periodTransactions,
+    debtorsSummary: debtorsSummaryQuery.data ?? EMPTY_DEBTOR_SUMMARY,
+    periodTransactions: periodTransactionsQuery.data ?? [],
     evolutionData,
-    categoryLoading,
+    categoryLoading: categoryBreakdownQuery.isLoading,
     categoryBreakdown,
-    goalsLoading,
-    goals,
-    subscriptionsLoading,
-    subscriptions,
+    goalsLoading: goalsQuery.isLoading,
+    goals: goalsQuery.data ?? [],
+    subscriptionsLoading: subscriptionsQuery.isLoading,
+    subscriptions: subscriptionsQuery.data ?? [],
   };
 }
