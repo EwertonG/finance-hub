@@ -56,6 +56,7 @@ model Category {
   transactions Transaction[]
   recurrences  Recurrence[]
 
+  @@index([userId])
   @@map("categories")
 }
 
@@ -80,6 +81,9 @@ model Transaction {
 
   createdAt   DateTime        @default(now()) @map("created_at")
 
+  @@index([userId, date])
+  @@index([recurrenceId])
+  @@index([categoryId])
   @@map("transactions")
 }
 
@@ -105,6 +109,7 @@ model Recurrence {
 
   createdAt        DateTime        @default(now()) @map("created_at")
 
+  @@index([userId, kind, active])
   @@map("recurrences")
 }
 
@@ -124,6 +129,7 @@ model Goal {
 
   createdAt     DateTime @default(now()) @map("created_at")
 
+  @@index([userId])
   @@map("goals")
 }
 
@@ -142,6 +148,7 @@ model GoalContribution {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([goalId])
   @@map("goal_contributions")
 }
 
@@ -162,5 +169,7 @@ model Debtor {
 
   createdAt        DateTime     @default(now()) @map("created_at")
 
+  @@index([userId, date])
+  @@index([status])
   @@map("debtors")
 }
