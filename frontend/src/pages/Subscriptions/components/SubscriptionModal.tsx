@@ -15,6 +15,7 @@ import {
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { api } from '../../../services/api';
+import { useCategories } from '../../../hooks/useCategories';
 
 export interface Subscription {
   id: string;
@@ -32,11 +33,6 @@ interface SubscriptionModalProps {
   onSaved: (subscription: Subscription) => void;
 }
 
-interface Category {
-  id: string;
-  name: string;
-}
-
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onClose, onSaved }) => {
   const today = new Date().toISOString().split('T')[0];
 
@@ -46,8 +42,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState(today);
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,23 +52,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ open, onCl
     setDescription('');
     setAmount('');
     setStartDate(today);
-
-    const loadCategories = async () => {
-      try {
-        setIsLoadingCategories(true);
-        const response = await api.get('/categories');
-        setCategories(response.data);
-        setCategory(response.data[0]?.id ?? '');
-      } catch (error) {
-        console.error('Erro ao buscar categorias:', error);
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    };
-
-    loadCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Categoria default assim que a lista (cacheada) estiver disponível.
+  useEffect(() => {
+    if (!open || categories.length === 0) return;
+    setCategory((prev) => (prev && categories.some((c) => c.id === prev) ? prev : categories[0]?.id ?? ''));
+  }, [open, categories]);
 
   const handleTypeChange = (_: React.MouseEvent<HTMLElement>, newType: 'INCOME' | 'EXPENSE' | null) => {
     if (newType !== null) setType(newType);
