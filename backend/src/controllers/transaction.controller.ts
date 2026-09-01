@@ -4,10 +4,12 @@ import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
 
+const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
+
 export async function createTransaction(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { description, amount, date, type, categoryId } = req.body;
+    const { description, amount, date, type, categoryId, paymentMethod } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -21,6 +23,10 @@ export async function createTransaction(req: Request, res: Response) {
 
     if (type !== 'INCOME' && type !== 'EXPENSE') {
       return res.status(400).json({ error: 'O tipo deve ser INCOME ou EXPENSE.' });
+    }
+
+    if (paymentMethod && !PAYMENT_METHODS.includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Forma de pagamento inválida.' });
     }
 
     if (categoryId) {
@@ -44,6 +50,7 @@ export async function createTransaction(req: Request, res: Response) {
         type,
         userId,
         categoryId: categoryId ? String(categoryId) : null,
+        paymentMethod: paymentMethod || null,
       },
       include: {
         category: true,
@@ -221,7 +228,7 @@ export async function updateTransaction(req: Request, res: Response) {
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const { description, amount, date, type, categoryId } = req.body;
+    const { description, amount, date, type, categoryId, paymentMethod } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -229,6 +236,10 @@ export async function updateTransaction(req: Request, res: Response) {
 
     if (!id || typeof id !== 'string') {
       return res.status(400).json({ error: 'ID do lançamento inválido.' });
+    }
+
+    if (paymentMethod && !PAYMENT_METHODS.includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Forma de pagamento inválida.' });
     }
 
     const existingTransaction = await prisma.transaction.findFirst({
@@ -252,6 +263,7 @@ export async function updateTransaction(req: Request, res: Response) {
         ...(date ? { date: new Date(date) } : {}),
         ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type } : {}),
         ...(categoryId !== undefined ? { categoryId: categoryId ? String(categoryId) : null } : {}),
+        ...(paymentMethod !== undefined ? { paymentMethod: paymentMethod || null } : {}),
       },
       include: {
         category: true,
@@ -342,6 +354,40 @@ export async function getCategoryBreakdown(req: Request, res: Response) {
   } catch (error) {
     console.error('Erro ao calcular gastos por categoria:', error);
     return res.status(500).json({ error: 'Erro interno ao calcular gastos por categoria.' });
+  }
+}
+
+// Mesmo período selecionado no dashboard (mês/ano), soma no banco por forma
+// de pagamento — "fatura do cartão" e "saldo em débito" são exatamente essa
+// soma de despesas do período por método.
+export async function getPaymentMethodBreakdown(req: Request, res: Response) {
+  try {
+    const userId = req.userId;
+    const { month, year } = req.query;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuário não autenticado.' });
+    }
+
+    const totals = await prisma.transaction.groupBy({
+      by: ['paymentMethod'],
+      where: { userId, type: 'EXPENSE', ...buildDateFilter(month, year) },
+      _sum: { amount: true },
+    });
+
+    const totalsByMethod = new Map<string, number>(
+      totals.map((t) => [t.paymentMethod ?? '', Number(t._sum.amount ?? 0)])
+    );
+
+    const breakdown = PAYMENT_METHODS.map((method) => ({
+      paymentMethod: method,
+      amount: totalsByMethod.get(method) ?? 0,
+    }));
+
+    return res.json(breakdown);
+  } catch (error) {
+    console.error('Erro ao calcular gastos por forma de pagamento:', error);
+    return res.status(500).json({ error: 'Erro interno ao calcular gastos por forma de pagamento.' });
   }
 }
 

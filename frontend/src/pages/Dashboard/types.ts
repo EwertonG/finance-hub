@@ -47,3 +47,12 @@ export interface CategoryBreakdownItem {
   amount: number;
   percentage: number;
 }
+
+export interface BudgetProgressItem {
+  categoryId: string;
+  name: string;
+  color: string;
+  icon: string;
+  budget: number;
+  spent: number;
+}
