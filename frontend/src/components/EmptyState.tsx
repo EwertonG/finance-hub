@@ -23,8 +23,6 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon, message, action, v
     </Box>
   );
 
-  // "plain" pula o Card, usado quando o estado vazio já está dentro de um
-  // container com borda (ex: célula de tabela).
   if (variant === 'plain') {
     return <Box sx={{ py: 3, textAlign: 'center' }}>{content}</Box>;
   }

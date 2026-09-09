@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Grid,
   IconButton,
   Table,
   TableBody,
@@ -22,6 +23,10 @@ import {
   Pagination,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
+import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
+import PaidRoundedIcon from '@mui/icons-material/PaidRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
@@ -37,7 +42,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import { getCategoryIconComponent } from '../../constants/categoryIcons';
 import { useCategories } from '../../hooks/useCategories';
-import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS, type PaymentMethod } from '../../constants/paymentMethods';
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS, type PaymentMethod } from '../../constants/paymentMethods';
 
 interface Transaction {
   id: string;
@@ -52,7 +57,14 @@ interface Transaction {
   paymentMethod: PaymentMethod | null;
 }
 
+interface SummaryResponse {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+}
+
 const PAGE_SIZE = 10;
+const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export const Transactions: React.FC = () => {
   const theme = useTheme();
@@ -62,6 +74,7 @@ export const Transactions: React.FC = () => {
 
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('ALL');
   const { data: categories = [] } = useCategories();
   const [page, setPage] = useState(1);
 
@@ -70,10 +83,20 @@ export const Transactions: React.FC = () => {
   const { notify } = useNotification();
   const { month, year, viewMode } = usePeriod();
 
-  const listParams = {
-    ...(viewMode === 'monthly' ? { month, year } : { year }),
+  // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano inteiro.
+  const periodParams = viewMode === 'monthly' ? { month, year } : { year };
+
+  // Mesmos filtros usados tanto na listagem quanto no resumo abaixo — o
+  // resumo deve refletir exatamente o que está filtrado na tabela.
+  const filterParams = {
+    ...periodParams,
     ...(typeFilter !== 'ALL' ? { type: typeFilter } : {}),
     ...(categoryFilter !== 'ALL' ? { categoryId: categoryFilter } : {}),
+    ...(paymentMethodFilter !== 'ALL' ? { paymentMethod: paymentMethodFilter } : {}),
+  };
+
+  const listParams = {
+    ...filterParams,
     page,
     limit: PAGE_SIZE,
   };
@@ -90,6 +113,26 @@ export const Transactions: React.FC = () => {
   const transactions = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
 
+  // Resumo respeitando os filtros ativos (tipo/categoria/forma de
+  // pagamento) — muda junto quando o usuário troca de Pix pra Crédito, etc.
+  const { data: filteredSummary } = useQuery({
+    queryKey: ['transactions', 'summary', 'filtered', filterParams],
+    queryFn: async () => {
+      const response = await api.get<SummaryResponse>('/transactions/summary', { params: filterParams });
+      return response.data;
+    },
+  });
+
+  // Gasto total do período, sempre sem os filtros de tipo/categoria/forma de
+  // pagamento — serve de referência fixa enquanto o usuário filtra acima.
+  const { data: periodTotal } = useQuery({
+    queryKey: ['transactions', 'summary', 'total', periodParams],
+    queryFn: async () => {
+      const response = await api.get<SummaryResponse>('/transactions/summary', { params: periodParams });
+      return response.data;
+    },
+  });
+
   // Muda de período (contexto global) reseta a página, que pode não existir
   // mais no novo recorte.
   useEffect(() => {
@@ -105,6 +148,13 @@ export const Transactions: React.FC = () => {
     setCategoryFilter(value);
     setPage(1);
   };
+
+  const handlePaymentMethodFilterChange = (value: string) => {
+    setPaymentMethodFilter(value);
+    setPage(1);
+  };
+
+  const periodLabel = viewMode === 'monthly' ? `${MONTH_LABELS[month - 1]}/${year}` : `${year}`;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -220,6 +270,22 @@ export const Transactions: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Forma de Pagamento</InputLabel>
+            <Select
+              value={paymentMethodFilter}
+              label="Forma de Pagamento"
+              onChange={(e) => handlePaymentMethodFilterChange(e.target.value)}
+              sx={{ borderRadius: 2 }}
+            >
+              <MenuItem value="ALL">Todas</MenuItem>
+              {PAYMENT_METHODS.map((method) => (
+                <MenuItem key={method} value={method}>
+                  {PAYMENT_METHOD_LABELS[method]}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Box>
         <Button
           variant="contained"
@@ -237,6 +303,82 @@ export const Transactions: React.FC = () => {
           Novo Lançamento
         </Button>
       </Box>
+
+      {/* Resumo — os 3 primeiros cards respeitam os filtros ativos acima;
+          o último é sempre o gasto total do período, sem filtro nenhum. */}
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
+              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.light', color: 'success.dark', display: 'flex' }}>
+                <TrendingUpRoundedIcon />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Receitas
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
+                  {formatCurrency(filteredSummary?.totalIncome ?? 0)}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
+              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.light', color: 'error.dark', display: 'flex' }}>
+                <TrendingDownRoundedIcon />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Despesas
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'error.main' }}>
+                  {formatCurrency(filteredSummary?.totalExpense ?? 0)}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
+              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.dark', display: 'flex' }}>
+                <AccountBalanceWalletRoundedIcon />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Saldo (filtrado)
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                  {formatCurrency(filteredSummary?.balance ?? 0)}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
+              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.light', color: 'warning.dark', display: 'flex' }}>
+                <PaidRoundedIcon />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Gasto Total · {periodLabel}
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                  {formatCurrency(periodTotal?.totalExpense ?? 0)}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Tabela de Transações */}
       <Card

@@ -67,7 +67,7 @@ export async function createTransaction(req: Request, res: Response) {
 export async function listTransactions(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { month, year, type, categoryId, page, limit } = req.query;
+    const { month, year, type, categoryId, paymentMethod, page, limit } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -80,6 +80,9 @@ export async function listTransactions(req: Request, res: Response) {
       ...buildDateFilter(month, year),
       ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
       ...(categoryId ? { categoryId: String(categoryId) } : {}),
+      ...(paymentMethod && PAYMENT_METHODS.includes(String(paymentMethod))
+        ? { paymentMethod: paymentMethod as 'PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH' }
+        : {}),
     };
 
     // "limit" ausente = sem paginação (usado pelo Dashboard, que precisa do
@@ -116,7 +119,7 @@ export async function listTransactions(req: Request, res: Response) {
 export async function getTransactionSummary(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { month, year } = req.query;
+    const { month, year, type, categoryId, paymentMethod } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -127,18 +130,18 @@ export async function getTransactionSummary(req: Request, res: Response) {
     const currentYear = year ? parseInt(String(year), 10) : new Date().getFullYear();
     const currentMonth = month ? parseInt(String(month), 10) : new Date().getMonth() + 1;
 
-    // UTC: datas são armazenadas em UTC-meia-noite (ver lib/recurrence.ts).
-    const startDate = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
-    const endDate = new Date(Date.UTC(currentYear, currentMonth, 0, 23, 59, 59, 999));
-
+    // Mesmos filtros opcionais da listagem (tela de Lançamentos usa isso pra
+    // mostrar o resumo respeitando os filtros ativos, não só o período).
     const totals = await prisma.transaction.groupBy({
       by: ['type'],
       where: {
         userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
+        ...buildDateFilter(month, year),
+        ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
+        ...(categoryId ? { categoryId: String(categoryId) } : {}),
+        ...(paymentMethod && PAYMENT_METHODS.includes(String(paymentMethod))
+          ? { paymentMethod: paymentMethod as 'PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH' }
+          : {}),
       },
       _sum: { amount: true },
     });

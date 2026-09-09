@@ -11,9 +11,6 @@ export interface Category {
   createdAt: string;
 }
 
-// Categorias mudam pouco, então ficam num staleTime bem maior que o padrão
-// global — evita refetch a cada abertura de modal (Transação, Devedor,
-// Assinatura) e a cada visita à página de Categorias.
 export function useCategories(type?: 'INCOME' | 'EXPENSE') {
   return useQuery({
     queryKey: ['categories', type ?? 'ALL'],

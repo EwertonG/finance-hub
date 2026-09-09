@@ -5,8 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 
 export const MainLayout: React.FC = () => {
-  // Abaixo do breakpoint "md" a Sidebar vira um Drawer sobreposto em vez de
-  // permanente; esse estado controla se ele está aberto nesse modo.
+
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
