@@ -12,8 +12,6 @@ import { Register } from './pages/Auth/Register';
 import { MainLayout } from './layouts/MainLayout/index';
 import { PeriodProvider } from './contexts/PeriodContext';
 
-// Code-splitting: cada página autenticada só é baixada quando visitada pela
-// primeira vez, em vez de tudo ir no bundle inicial.
 const Transactions = lazy(() => import('./pages/Transactions').then((m) => ({ default: m.Transactions })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Categories = lazy(() => import('./pages/Categories').then((m) => ({ default: m.Categories })));

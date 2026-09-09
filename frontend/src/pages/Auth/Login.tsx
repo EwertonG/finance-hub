@@ -17,7 +17,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
-import logoImg from '../../assets/logo.png'
+import logoImg from '../../assets/logo-horizontal.svg'
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -83,7 +83,7 @@ export const Login: React.FC = () => {
             <Box
               component="img"
               src={logoImg}
-              alt="FinanceHUB Logo"
+              alt="CentralFinancas Logo"
               sx={{
                 height: 80,
                 width: 'auto',
