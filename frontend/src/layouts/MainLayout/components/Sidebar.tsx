@@ -29,7 +29,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { DRAWER_WIDTH } from '../constants';
 
-import logoImg from '../../../assets/logo.png'; 
+import logoImg from '../../../assets/logo-horizontal.svg';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -98,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) =
         <Box
           component="img"
           src={logoImg}
-          alt="FinanceHub Logo"
+          alt="CentralFinanças Logo"
           sx={{ height: 38, objectFit: 'contain' }}
         />
       </Box>

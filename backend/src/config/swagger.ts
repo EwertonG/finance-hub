@@ -1,9 +1,9 @@
 export const swaggerDocument = {
   openapi: '3.0.0',
   info: {
-    title: 'FinanceHub API',
+    title: 'CentralFinanças API',
     version: '1.0.0',
-    description: 'Documentação e ambiente de testes interativo da API do FinanceHub',
+    description: 'Documentação e ambiente de testes interativo da API do CentralFinanças',
   },
   servers: [
     {
