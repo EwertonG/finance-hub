@@ -94,6 +94,7 @@ model Transaction {
   @@index([userId, date])
   @@index([recurrenceId])
   @@index([categoryId])
+  @@index([userId, createdAt])
   @@map("transactions")
 }
 

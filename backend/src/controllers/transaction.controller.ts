@@ -417,3 +417,27 @@ export async function getFirstTransactionDate(req: Request, res: Response) {
     return res.status(500).json({ error: 'Erro interno ao buscar primeiro lançamento.' });
   }
 }
+
+// "Atualizado em" na tela de Lançamentos: quando o usuário criou o último
+// lançamento de fato (createdAt), não a data do lançamento em si (que é
+// livremente editável e pode ser retroativa ou futura).
+export async function getLastAddedTransaction(req: Request, res: Response) {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuário não autenticado.' });
+    }
+
+    const last = await prisma.transaction.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+
+    return res.json({ createdAt: last?.createdAt ?? null });
+  } catch (error) {
+    console.error('Erro ao buscar último lançamento adicionado:', error);
+    return res.status(500).json({ error: 'Erro interno ao buscar último lançamento adicionado.' });
+  }
+}
