@@ -44,7 +44,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const theme = useTheme();
 
   const currentHeader = pageHeaders[location.pathname] || {
-    title: 'FinanceHub',
+    title: 'CentralFinanças',
     description: 'Plataforma de gestão financeira.',
   };
 

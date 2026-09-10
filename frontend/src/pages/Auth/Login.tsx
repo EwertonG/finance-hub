@@ -83,7 +83,7 @@ export const Login: React.FC = () => {
             <Box
               component="img"
               src={logoImg}
-              alt="CentralFinancas Logo"
+              alt="CentralFinanças Logo"
               sx={{
                 height: 80,
                 width: 'auto',

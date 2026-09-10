@@ -27,9 +27,11 @@ import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useThemeMode } from '../../../contexts/ThemeModeContext';
 import { DRAWER_WIDTH } from '../constants';
 
-import logoImg from '../../../assets/logo.png'; 
+import logoImgLight from '../../../assets/logo-horizontal.svg';
+import logoImgDark from '../../../assets/logo-horizontal-dark.svg';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -43,6 +45,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) =
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
   const { user, signOut } = useAuth();
+  const { mode } = useThemeMode();
+  const logoImg = mode === 'dark' ? logoImgDark : logoImgLight;
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -98,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) =
         <Box
           component="img"
           src={logoImg}
-          alt="FinanceHub Logo"
+          alt="CentralFinanças Logo"
           sx={{ height: 38, objectFit: 'contain' }}
         />
       </Box>

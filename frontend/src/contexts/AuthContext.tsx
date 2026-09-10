@@ -25,14 +25,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     async function loadStoragedUser() {
-      const storedToken = localStorage.getItem('@FinanceHub:token');
+      const storedToken = localStorage.getItem('@CentralFinancas:token');
 
       if (storedToken) {
         try {
           const response = await api.get('/auth/me');
           setUser(response.data.user);
         } catch (error) {
-          localStorage.removeItem('@FinanceHub:token');
+          localStorage.removeItem('@CentralFinancas:token');
           setUser(null);
         }
       }
@@ -44,12 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   function signIn(token: string, userData: User) {
-    localStorage.setItem('@FinanceHub:token', token);
+    localStorage.setItem('@CentralFinancas:token', token);
     setUser(userData);
   }
 
   function signOut() {
-    localStorage.removeItem('@FinanceHub:token');
+    localStorage.removeItem('@CentralFinancas:token');
     setUser(null);
   }
 
