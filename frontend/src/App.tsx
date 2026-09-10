@@ -50,8 +50,26 @@ const AppRoutes: React.FC = () => {
           <BrowserRouter>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
+                {/* Login/Cadastro têm identidade visual própria e fixa (fundo
+                    claro, painel verde) — não devem herdar o modo escuro do
+                    resto do app, então rodam sob um ThemeProvider aninhado
+                    sempre claro. */}
+                <Route
+                  path="/login"
+                  element={
+                    <ThemeProvider theme={lightTheme}>
+                      <Login />
+                    </ThemeProvider>
+                  }
+                />
+                <Route
+                  path="/register"
+                  element={
+                    <ThemeProvider theme={lightTheme}>
+                      <Register />
+                    </ThemeProvider>
+                  }
+                />
 
                 <Route
                   path="/"
