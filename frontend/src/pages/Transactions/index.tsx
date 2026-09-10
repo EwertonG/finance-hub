@@ -133,6 +133,17 @@ export const Transactions: React.FC = () => {
     },
   });
 
+  // Quando o usuário criou o último lançamento de fato (createdAt), não a
+  // data do lançamento em si (que é livremente editável). Sob o prefixo
+  // 'transactions', então qualquer criação/edição já invalida isso também.
+  const { data: lastAddedAt } = useQuery({
+    queryKey: ['transactions', 'last-added'],
+    queryFn: async () => {
+      const response = await api.get<{ createdAt: string | null }>('/transactions/last-added');
+      return response.data.createdAt;
+    },
+  });
+
   // Muda de período (contexto global) reseta a página, que pode não existir
   // mais no novo recorte.
   useEffect(() => {
@@ -167,6 +178,15 @@ export const Transactions: React.FC = () => {
     const datePart = dateString.split('T')[0];
     const [year, month, day] = datePart.split('-');
     return `${day}/${month}/${year}`;
+  };
+
+  // createdAt é um instante real (diferente de "date"), então aqui converte
+  // pro horário local do navegador em vez de ler os campos em UTC.
+  const formatDateTime = (isoString: string) => {
+    const parsed = new Date(isoString);
+    const date = parsed.toLocaleDateString('pt-BR');
+    const time = parsed.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `${date} às ${time}`;
   };
 
   const handleOpenCreateModal = () => {
@@ -287,21 +307,28 @@ export const Transactions: React.FC = () => {
             </Select>
           </FormControl>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon />}
-          onClick={handleOpenCreateModal}
-          sx={{
-            borderRadius: 2,
-            px: 2.5,
-            py: 1,
-            textTransform: 'none',
-            fontWeight: 600,
-            boxShadow: 'none',
-          }}
-        >
-          Novo Lançamento
-        </Button>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={handleOpenCreateModal}
+            sx={{
+              borderRadius: 2,
+              px: 2.5,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: 'none',
+            }}
+          >
+            Novo Lançamento
+          </Button>
+          {lastAddedAt && (
+            <Typography variant="caption" color="text.secondary">
+              Atualizado em {formatDateTime(lastAddedAt)}
+            </Typography>
+          )}
+        </Box>
       </Box>
 
       {/* Resumo — os 3 primeiros cards respeitam os filtros ativos acima;

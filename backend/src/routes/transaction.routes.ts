@@ -7,6 +7,7 @@ import {
   getCategoryBreakdown,
   getPaymentMethodBreakdown,
   getFirstTransactionDate,
+  getLastAddedTransaction,
   updateTransaction,
   deleteTransaction,
 } from '../controllers/transaction.controller.js';
@@ -23,6 +24,7 @@ transactionRoutes.get('/annual-summary', getAnnualSummary);
 transactionRoutes.get('/category-breakdown', getCategoryBreakdown);
 transactionRoutes.get('/payment-method-breakdown', getPaymentMethodBreakdown);
 transactionRoutes.get('/first-date', getFirstTransactionDate);
+transactionRoutes.get('/last-added', getLastAddedTransaction);
 transactionRoutes.put('/:id', updateTransaction);
 transactionRoutes.delete('/:id', deleteTransaction);
 
