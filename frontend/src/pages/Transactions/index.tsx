@@ -42,7 +42,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import { getCategoryIconComponent } from '../../constants/categoryIcons';
 import { useCategories } from '../../hooks/useCategories';
-import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS, type PaymentMethod } from '../../constants/paymentMethods';
+import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS, type PaymentMethod } from '../../constants/paymentMethods';
 
 interface Transaction {
   id: string;
@@ -65,6 +65,14 @@ interface SummaryResponse {
 
 const PAGE_SIZE = 10;
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// Débito e Pix são tratados como um filtro só (ambos saem na hora da conta
+// corrente, sem fatura) — o backend aceita lista separada por vírgula.
+const PAYMENT_METHOD_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'DEBIT_CARD,PIX', label: 'Débito/Pix' },
+  { value: 'CREDIT_CARD', label: PAYMENT_METHOD_LABELS.CREDIT_CARD },
+  { value: 'CASH', label: PAYMENT_METHOD_LABELS.CASH },
+];
 
 export const Transactions: React.FC = () => {
   const theme = useTheme();
@@ -299,9 +307,9 @@ export const Transactions: React.FC = () => {
               sx={{ borderRadius: 2 }}
             >
               <MenuItem value="ALL">Todas</MenuItem>
-              {PAYMENT_METHODS.map((method) => (
-                <MenuItem key={method} value={method}>
-                  {PAYMENT_METHOD_LABELS[method]}
+              {PAYMENT_METHOD_FILTER_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
                 </MenuItem>
               ))}
             </Select>
