@@ -7,7 +7,7 @@ interface ThemeModeContextData {
   toggleMode: () => void;
 }
 
-const STORAGE_KEY = '@FinanceHub:themeMode';
+const STORAGE_KEY = '@CentralFinancas:themeMode';
 
 const ThemeModeContext = createContext<ThemeModeContextData>({} as ThemeModeContextData);
 

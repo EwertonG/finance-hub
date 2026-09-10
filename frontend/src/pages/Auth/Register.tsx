@@ -18,7 +18,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
-import logoImg from '../../assets/logo.png';
+import logoImg from '../../assets/logo-horizontal.svg';
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 const PASSWORD_REQUIREMENTS_MESSAGE =
@@ -95,7 +95,7 @@ export const Register: React.FC = () => {
             <Box
               component="img"
               src={logoImg}
-              alt="FinanceHUB Logo"
+              alt="CentralFinanças Logo"
               sx={{
                 height: 80,
                 width: 'auto',
