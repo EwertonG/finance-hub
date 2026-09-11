@@ -6,6 +6,16 @@ import { buildDateFilter } from '../lib/dateFilter.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
 
+// Filtro da tela de Lançamentos permite agrupar métodos (ex: "Débito/Pix"),
+// então o param chega como lista separada por vírgula.
+function parsePaymentMethodFilter(paymentMethod: unknown) {
+  if (!paymentMethod) return undefined;
+  const methods = String(paymentMethod)
+    .split(',')
+    .filter((method) => PAYMENT_METHODS.includes(method));
+  return methods.length > 0 ? methods : undefined;
+}
+
 export async function createTransaction(req: Request, res: Response) {
   try {
     const userId = req.userId;
@@ -75,14 +85,14 @@ export async function listTransactions(req: Request, res: Response) {
 
     await ensureSubscriptionTransactions(userId);
 
+    const paymentMethods = parsePaymentMethodFilter(paymentMethod);
+
     const where = {
       userId,
       ...buildDateFilter(month, year),
       ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
       ...(categoryId ? { categoryId: String(categoryId) } : {}),
-      ...(paymentMethod && PAYMENT_METHODS.includes(String(paymentMethod))
-        ? { paymentMethod: paymentMethod as 'PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH' }
-        : {}),
+      ...(paymentMethods ? { paymentMethod: { in: paymentMethods as ('PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH')[] } } : {}),
     };
 
     // "limit" ausente = sem paginação (usado pelo Dashboard, que precisa do
@@ -132,6 +142,8 @@ export async function getTransactionSummary(req: Request, res: Response) {
 
     // Mesmos filtros opcionais da listagem (tela de Lançamentos usa isso pra
     // mostrar o resumo respeitando os filtros ativos, não só o período).
+    const paymentMethods = parsePaymentMethodFilter(paymentMethod);
+
     const totals = await prisma.transaction.groupBy({
       by: ['type'],
       where: {
@@ -139,9 +151,7 @@ export async function getTransactionSummary(req: Request, res: Response) {
         ...buildDateFilter(month, year),
         ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
         ...(categoryId ? { categoryId: String(categoryId) } : {}),
-        ...(paymentMethod && PAYMENT_METHODS.includes(String(paymentMethod))
-          ? { paymentMethod: paymentMethod as 'PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH' }
-          : {}),
+        ...(paymentMethods ? { paymentMethod: { in: paymentMethods as ('PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH')[] } } : {}),
       },
       _sum: { amount: true },
     });
