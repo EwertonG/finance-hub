@@ -26,7 +26,6 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
-import PaidRoundedIcon from '@mui/icons-material/PaidRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
@@ -64,7 +63,6 @@ interface SummaryResponse {
 }
 
 const PAGE_SIZE = 10;
-const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export const Transactions: React.FC = () => {
   const theme = useTheme();
@@ -123,16 +121,6 @@ export const Transactions: React.FC = () => {
     },
   });
 
-  // Gasto total do período, sempre sem os filtros de tipo/categoria/forma de
-  // pagamento — serve de referência fixa enquanto o usuário filtra acima.
-  const { data: periodTotal } = useQuery({
-    queryKey: ['transactions', 'summary', 'total', periodParams],
-    queryFn: async () => {
-      const response = await api.get<SummaryResponse>('/transactions/summary', { params: periodParams });
-      return response.data;
-    },
-  });
-
   // Quando o usuário criou o último lançamento de fato (createdAt), não a
   // data do lançamento em si (que é livremente editável). Sob o prefixo
   // 'transactions', então qualquer criação/edição já invalida isso também.
@@ -164,8 +152,6 @@ export const Transactions: React.FC = () => {
     setPaymentMethodFilter(value);
     setPage(1);
   };
-
-  const periodLabel = viewMode === 'monthly' ? `${MONTH_LABELS[month - 1]}/${year}` : `${year}`;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -331,10 +317,9 @@ export const Transactions: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Resumo — os 3 primeiros cards respeitam os filtros ativos acima;
-          o último é sempre o gasto total do período, sem filtro nenhum. */}
+      {/* Resumo respeitando os filtros ativos acima. */}
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
               <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.light', color: 'success.dark', display: 'flex' }}>
@@ -352,7 +337,7 @@ export const Transactions: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
               <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.light', color: 'error.dark', display: 'flex' }}>
@@ -370,7 +355,7 @@ export const Transactions: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
               <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.dark', display: 'flex' }}>
@@ -382,24 +367,6 @@ export const Transactions: React.FC = () => {
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
                   {formatCurrency(filteredSummary?.balance ?? 0)}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, '&:last-child': { pb: 2.5 } }}>
-              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.light', color: 'warning.dark', display: 'flex' }}>
-                <PaidRoundedIcon />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                  Gasto Total · {periodLabel}
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                  {formatCurrency(periodTotal?.totalExpense ?? 0)}
                 </Typography>
               </Box>
             </CardContent>
