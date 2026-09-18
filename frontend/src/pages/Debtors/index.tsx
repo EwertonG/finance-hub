@@ -39,6 +39,7 @@ import { DebtorModal } from "./components/DebtorModal";
 import type { NewDebtorData } from "./components/DebtorModal";
 import { api } from "../../services/api";
 import { useNotification } from '../../contexts/NotificationContext';
+import { useUndoableDelete } from '../../hooks/useUndoableDelete';
 import { usePeriod } from '../../contexts/PeriodContext';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -106,6 +107,8 @@ export const Debtors: React.FC = () => {
   const [newStatus, setNewStatus] = useState<"PENDING" | "CHARGED" | "PAID">("PENDING");
 
   const { notify } = useNotification();
+
+  const undoableDelete = useUndoableDelete();
   const { month, year, viewMode } = usePeriod();
 
   const [page, setPage] = useState(1);
@@ -161,7 +164,7 @@ export const Debtors: React.FC = () => {
 
   // Otimista: some da lista e fecha o diálogo na hora; a paginação
   // (total/totalPages) é reconciliada em segundo plano após confirmar.
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
     const listQueryKey = ["debtors", "list", listParams];
@@ -172,14 +175,13 @@ export const Debtors: React.FC = () => {
     );
     setDeleteId(null);
 
-    try {
-      await api.delete(`/debtors/${idToDelete}`);
-      notify("Devedor excluído com sucesso!", "success");
-      queryClient.invalidateQueries({ queryKey: ["debtors"] });
-    } catch {
-      queryClient.setQueryData(listQueryKey, previousData);
-      notify("Erro ao excluir devedor.", "error");
-    }
+    undoableDelete({
+      message: "Devedor excluído.",
+      errorMessage: "Erro ao excluir devedor.",
+      remove: () => api.delete(`/debtors/${idToDelete}`),
+      restore: () => queryClient.setQueryData(listQueryKey, previousData),
+      onCommitted: () => queryClient.invalidateQueries({ queryKey: ["debtors"] }),
+    });
   };
 
   const handleUpdateStatus = async () => {
