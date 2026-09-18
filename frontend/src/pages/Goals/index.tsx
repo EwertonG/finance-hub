@@ -22,7 +22,7 @@ import SwapVertRoundedIcon from '@mui/icons-material/SwapVertRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { api } from '../../services/api';
-import { useNotification } from '../../contexts/NotificationContext';
+import { useUndoableDelete } from '../../hooks/useUndoableDelete';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { GoalModal } from './components/GoalModal';
@@ -70,7 +70,7 @@ const GOALS_QUERY_KEY = ['goals'];
 export const Goals: React.FC = () => {
   const theme = useTheme();
   const queryClient = useQueryClient();
-  const { notify } = useNotification();
+  const undoableDelete = useUndoableDelete();
 
   const { data: goals = [], isLoading } = useQuery({
     queryKey: GOALS_QUERY_KEY,
@@ -101,7 +101,7 @@ export const Goals: React.FC = () => {
 
   // Otimista: some da lista na hora; só volta a consultar o servidor se a
   // exclusão falhar.
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
     const previousGoals = queryClient.getQueryData<Goal[]>(GOALS_QUERY_KEY);
@@ -109,14 +109,12 @@ export const Goals: React.FC = () => {
     queryClient.setQueryData<Goal[]>(GOALS_QUERY_KEY, (prev = []) => prev.filter((g) => g.id !== idToDelete));
     setDeleteId(null);
 
-    try {
-      await api.delete(`/goals/${idToDelete}`);
-      notify('Meta excluída com sucesso!', 'success');
-    } catch (error) {
-      console.error('Erro ao excluir meta:', error);
-      queryClient.setQueryData(GOALS_QUERY_KEY, previousGoals);
-      notify('Erro ao excluir meta. Tente novamente.', 'error');
-    }
+    undoableDelete({
+      message: 'Meta excluída.',
+      errorMessage: 'Erro ao excluir meta. Tente novamente.',
+      remove: () => api.delete(`/goals/${idToDelete}`),
+      restore: () => queryClient.setQueryData(GOALS_QUERY_KEY, previousGoals),
+    });
   };
 
   return (

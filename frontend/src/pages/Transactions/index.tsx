@@ -35,6 +35,7 @@ import { TransactionModal } from './components/TransactionModal';
 import type { NewTransactionData } from './components/TransactionModal';
 import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useUndoableDelete } from '../../hooks/useUndoableDelete';
 import { usePeriod } from '../../contexts/PeriodContext';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -87,6 +88,8 @@ export const Transactions: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { notify } = useNotification();
+
+  const undoableDelete = useUndoableDelete();
   const { month, year, viewMode } = usePeriod();
 
   // Em modo mensal filtra pelo mês corrente; em modo anual usa o ano inteiro.
@@ -228,7 +231,7 @@ export const Transactions: React.FC = () => {
 
   // Otimista: some da lista e fecha o diálogo na hora; a paginação
   // (total/totalPages) é reconciliada em segundo plano após confirmar.
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
     const listQueryKey = ['transactions', 'list', listParams];
@@ -239,15 +242,13 @@ export const Transactions: React.FC = () => {
     );
     setDeleteId(null);
 
-    try {
-      await api.delete(`/transactions/${idToDelete}`);
-      notify('Lançamento excluído com sucesso!', 'success');
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    } catch (error) {
-      console.error('Erro ao deletar lançamento:', error);
-      queryClient.setQueryData(listQueryKey, previousData);
-      notify('Erro ao excluir lançamento. Tente novamente.', 'error');
-    }
+    undoableDelete({
+      message: 'Lançamento excluído.',
+      errorMessage: 'Erro ao excluir lançamento. Tente novamente.',
+      remove: () => api.delete(`/transactions/${idToDelete}`),
+      restore: () => queryClient.setQueryData(listQueryKey, previousData),
+      onCommitted: () => queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+    });
   };
 
   return (
