@@ -21,6 +21,7 @@ import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 
 import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useUndoableDelete } from '../../hooks/useUndoableDelete';
 import { useCategories, type Category } from '../../hooks/useCategories';
 
 import { CategoryModal } from './components/CategoryModal';
@@ -45,9 +46,11 @@ export const Categories = () => {
 
   const { notify } = useNotification();
 
+  const undoableDelete = useUndoableDelete();
+
   // Otimista: some da lista e fecha o diálogo na hora; só volta a consultar
   // o servidor se a exclusão falhar.
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
     const previousCategories = queryClient.getQueryData<Category[]>(categoriesQueryKey);
@@ -55,14 +58,12 @@ export const Categories = () => {
     queryClient.setQueryData<Category[]>(categoriesQueryKey, (prev = []) => prev.filter((c) => c.id !== idToDelete));
     setDeleteId(null);
 
-    try {
-      await api.delete(`/categories/${idToDelete}`);
-      notify('Categoria excluída com sucesso!', 'success');
-    } catch (error) {
-      console.error('Erro ao excluir categoria:', error);
-      queryClient.setQueryData(categoriesQueryKey, previousCategories);
-      notify('Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.', 'error');
-    }
+    undoableDelete({
+      message: 'Categoria excluída.',
+      errorMessage: 'Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.',
+      remove: () => api.delete(`/categories/${idToDelete}`),
+      restore: () => queryClient.setQueryData(categoriesQueryKey, previousCategories),
+    });
   };
 
   const handleOpenModal = () => {

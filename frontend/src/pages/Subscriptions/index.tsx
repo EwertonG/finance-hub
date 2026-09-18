@@ -24,6 +24,7 @@ import PlayCircleOutlineRoundedIcon from '@mui/icons-material/PlayCircleOutlineR
 import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useUndoableDelete } from '../../hooks/useUndoableDelete';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TableSkeleton } from '../../components/TableSkeleton';
@@ -49,6 +50,8 @@ export const Subscriptions: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { notify } = useNotification();
+
+  const undoableDelete = useUndoableDelete();
 
   const { data: subscriptions = [], isLoading } = useQuery({
     queryKey: SUBSCRIPTIONS_QUERY_KEY,
@@ -78,7 +81,7 @@ export const Subscriptions: React.FC = () => {
     }
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!deleteId) return;
     const idToDelete = deleteId;
     const previousSubscriptions = queryClient.getQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY);
@@ -86,14 +89,12 @@ export const Subscriptions: React.FC = () => {
     queryClient.setQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY, (prev = []) => prev.filter((s) => s.id !== idToDelete));
     setDeleteId(null);
 
-    try {
-      await api.delete(`/recurrences/${idToDelete}`);
-      notify('Assinatura excluída. Os lançamentos já gerados foram mantidos.', 'success');
-    } catch (error) {
-      console.error('Erro ao excluir assinatura:', error);
-      queryClient.setQueryData(SUBSCRIPTIONS_QUERY_KEY, previousSubscriptions);
-      notify('Erro ao excluir assinatura. Tente novamente.', 'error');
-    }
+    undoableDelete({
+      message: 'Assinatura excluída. Os lançamentos já gerados serão mantidos.',
+      errorMessage: 'Erro ao excluir assinatura. Tente novamente.',
+      remove: () => api.delete(`/recurrences/${idToDelete}`),
+      restore: () => queryClient.setQueryData(SUBSCRIPTIONS_QUERY_KEY, previousSubscriptions),
+    });
   };
 
   const handleSubscriptionSaved = (subscription: Subscription) => {
