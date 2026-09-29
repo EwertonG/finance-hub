@@ -6,7 +6,7 @@ Plataforma de gestão financeira pessoal para controle intuitivo de entradas, sa
 
 ---
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 - Cadastro e login de usuários com autenticação via JWT
 - Registro de entradas e saídas por categoria
@@ -14,7 +14,7 @@ Plataforma de gestão financeira pessoal para controle intuitivo de entradas, sa
 - Divisão de contas com devedores
 - Dashboard com visão consolidada das finanças
 
-## 🛠️ Tecnologias
+## Tecnologias
 
 ### Frontend
 - React + TypeScript
@@ -31,7 +31,7 @@ Plataforma de gestão financeira pessoal para controle intuitivo de entradas, sa
 - GitHub Actions (lint, type-check e build automatizados a cada PR)
 
 
-## ▶️ Como rodar localmente
+## Como rodar localmente
 
 ### Pré-requisitos
 - Node.js 18+
