@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions, subscriptionPeriod } from '../lib/recurrence.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
+import { splitAmount } from '../lib/money.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
 
@@ -68,7 +69,8 @@ export async function createRecurrence(req: Request, res: Response) {
         return res.status(400).json({ error: 'A parcela atual deve estar entre 1 e o total de parcelas.' });
       }
 
-      const installmentAmount = Number((totalAmountNumber / total).toFixed(2));
+      const installmentAmounts = splitAmount(totalAmountNumber, total);
+      const installmentAmount = installmentAmounts[0];
 
       const recurrence = await prisma.recurrence.create({
         data: {
@@ -98,7 +100,7 @@ export async function createRecurrence(req: Request, res: Response) {
         const daysInMonth = new Date(Date.UTC(startYear, month + 1, 0)).getUTCDate();
         return {
           description,
-          amount: installmentAmount,
+          amount: installmentAmounts[startInstallment + i - 1],
           date: new Date(Date.UTC(startYear, month, Math.min(startDay, daysInMonth))),
           type,
           userId,

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
 import { parsePositiveAmount } from '../lib/amount.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
+import { splitAmount } from '../lib/money.js';
 
 export async function createDebtor(req: Request, res: Response) {
   try {
@@ -37,9 +38,8 @@ export async function createDebtor(req: Request, res: Response) {
 
     const numberOfFriends = people.length;
     const totalParts = mySplit ? numberOfFriends + 1 : numberOfFriends;
-    
-    // Valor individual para cada parte
-    const individualAmount = Number((totalAmountNumber / totalParts).toFixed(2));
+    const shares = splitAmount(totalAmountNumber, totalParts);
+    const myShare = shares[totalParts - 1];
     const transactionDate = date ? new Date(date) : new Date();
 
     let createdTransaction = null;
@@ -48,7 +48,7 @@ export async function createDebtor(req: Request, res: Response) {
       createdTransaction = await prisma.transaction.create({
         data: {
           description: `${item} (Minha parte - Divisão)`,
-          amount: individualAmount,
+          amount: myShare,
           date: transactionDate,
           type: 'EXPENSE',
           userId,
@@ -58,10 +58,10 @@ export async function createDebtor(req: Request, res: Response) {
     }
 
     const createdDebtors = await prisma.debtor.createManyAndReturn({
-      data: people.map((personName: string) => ({
+      data: people.map((personName: string, index: number) => ({
         personName: String(personName).trim(),
         item,
-        amount: individualAmount,
+        amount: shares[index],
         totalAmount: totalAmountNumber,
         status: 'PENDING' as const,
         date: transactionDate,
