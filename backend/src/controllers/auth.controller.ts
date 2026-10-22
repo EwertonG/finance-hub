@@ -8,10 +8,15 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/
 const PASSWORD_REQUIREMENTS_MESSAGE =
   'A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.';
 
+function normalizeEmail(email: unknown) {
+  return String(email).trim().toLowerCase();
+}
+
 /* Cadastro */
 export async function register(req: Request, res: Response) {
   try {
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    const email = req.body.email ? normalizeEmail(req.body.email) : '';
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Nome, e-mail e senha são obrigatórios.' });
@@ -21,8 +26,8 @@ export async function register(req: Request, res: Response) {
       return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
     }
 
-    const userAlreadyExists = await prisma.user.findUnique({
-      where: { email },
+    const userAlreadyExists = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
     });
 
     if (userAlreadyExists) {
@@ -64,23 +69,26 @@ export async function register(req: Request, res: Response) {
 /* Login */
 export async function login(req: Request, res: Response) {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email ? normalizeEmail(req.body.email) : '';
 
     if (!email || !password) {
       return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const candidates = await prisma.user.findMany({
+      where: { email: { equals: email, mode: 'insensitive' } },
     });
 
-    if (!user) {
-      return res.status(400).json({ error: 'E-mail ou senha inválidos.' });
+    let user = null;
+    for (const candidate of candidates) {
+      if (await comparePassword(password, candidate.passwordHash)) {
+        user = candidate;
+        break;
+      }
     }
 
-    const isPasswordValid = await comparePassword(password, user.passwordHash);
-
-    if (!isPasswordValid) {
+    if (!user) {
       return res.status(400).json({ error: 'E-mail ou senha inválidos.' });
     }
 
@@ -132,7 +140,8 @@ export async function me(req: Request, res: Response) {
 export async function updateProfile(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { name, email } = req.body;
+    const { name } = req.body;
+    const email = req.body.email ? normalizeEmail(req.body.email) : '';
 
     if (!userId) {
       return res.status(401).json({ error: 'Não autorizado.' });
@@ -144,7 +153,7 @@ export async function updateProfile(req: Request, res: Response) {
 
     if (email) {
       const emailInUse = await prisma.user.findFirst({
-        where: { email, NOT: { id: userId } },
+        where: { email: { equals: email, mode: 'insensitive' }, NOT: { id: userId } },
       });
 
       if (emailInUse) {
@@ -186,8 +195,8 @@ export async function changePassword(req: Request, res: Response) {
       return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
     }
 
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres.' });
+    if (!PASSWORD_REGEX.test(newPassword)) {
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });

@@ -19,10 +19,8 @@ import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
 import logoImg from '../../assets/logo-horizontal.svg';
+import { PASSWORD_REGEX, PASSWORD_REQUIREMENTS_MESSAGE } from '../../constants/password';
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-const PASSWORD_REQUIREMENTS_MESSAGE =
-  'A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
