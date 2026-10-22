@@ -245,7 +245,7 @@ export const Transactions: React.FC = () => {
     undoableDelete({
       message: 'Lançamento excluído.',
       errorMessage: 'Erro ao excluir lançamento. Tente novamente.',
-      remove: () => api.delete(`/transactions/${idToDelete}`),
+      url: `/transactions/${idToDelete}`,
       restore: () => queryClient.setQueryData(listQueryKey, previousData),
       onCommitted: () => queryClient.invalidateQueries({ queryKey: ['transactions'] }),
     });
