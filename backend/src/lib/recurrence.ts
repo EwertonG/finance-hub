@@ -2,7 +2,7 @@ import { prisma } from './prisma.js';
 
 // Assinaturas não têm fim definido, então as transações são geradas sob
 // demanda (sem cron): a cada leitura de lançamentos, garante que exista uma
-// transação para cada período (mês) já decorrido desde o início.
+// transação para cada período (mês) ainda não gerado, até o mês atual.
 //
 // Várias rotas (listTransactions, getTransactionSummary, getAnnualSummary,
 // listRecurrences) chamam essa função, e uma única visita ao Dashboard bate
@@ -14,6 +14,14 @@ const SYNC_DEBOUNCE_MS = 5 * 60 * 1000;
 
 // "force" ignora o debounce: usado logo após criar uma assinatura nova, cuja
 // primeira transação precisa existir imediatamente, não só na próxima janela.
+export function subscriptionPeriod(startDate: Date, date: Date = new Date()) {
+  return (
+    (date.getUTCFullYear() - startDate.getUTCFullYear()) * 12 +
+    (date.getUTCMonth() - startDate.getUTCMonth()) +
+    1
+  );
+}
+
 export async function ensureSubscriptionTransactions(userId: string, force = false) {
   const lastSync = lastSyncByUser.get(userId);
   if (!force && lastSync && Date.now() - lastSync < SYNC_DEBOUNCE_MS) return;
@@ -23,52 +31,40 @@ export async function ensureSubscriptionTransactions(userId: string, force = fal
     where: { userId, kind: 'SUBSCRIPTION', active: true },
   });
 
-  if (subscriptions.length === 0) return;
-
   const now = new Date();
 
-  // Uma única query agrupada em vez de um count por assinatura: essa função
-  // roda em toda leitura de lançamentos, então o custo por assinatura soma rápido.
-  const counts = await prisma.transaction.groupBy({
-    by: ['recurrenceId'],
-    where: { recurrenceId: { in: subscriptions.map((s) => s.id) } },
-    _count: true,
-  });
-  const existingCountByRecurrence = new Map(counts.map((c) => [c.recurrenceId, c._count]));
-
   for (const subscription of subscriptions) {
-    const existingCount = existingCountByRecurrence.get(subscription.id) ?? 0;
+    const currentPeriod = subscriptionPeriod(subscription.startDate, now);
+    if (currentPeriod <= subscription.lastGeneratedPeriod) continue;
 
-    // Datas são armazenadas como UTC-meia-noite; usar os getters locais aqui
-    // misturaria fuso e deslocaria o dia (bug já visto em teste manual).
-    const monthsElapsed =
-      (now.getUTCFullYear() - subscription.startDate.getUTCFullYear()) * 12 +
-      (now.getUTCMonth() - subscription.startDate.getUTCMonth()) +
-      1;
-
-    if (monthsElapsed <= existingCount) continue;
-
+    const startYear = subscription.startDate.getUTCFullYear();
+    const startMonth = subscription.startDate.getUTCMonth();
     const day = subscription.startDate.getUTCDate();
     const missingTransactions = [];
 
-    for (let i = existingCount; i < monthsElapsed; i++) {
-      const year = subscription.startDate.getUTCFullYear();
-      const month = subscription.startDate.getUTCMonth() + i;
-      const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-      const chargeDate = new Date(Date.UTC(year, month, Math.min(day, daysInMonth)));
+    for (let period = subscription.lastGeneratedPeriod + 1; period <= currentPeriod; period++) {
+      const month = startMonth + period - 1;
+      const daysInMonth = new Date(Date.UTC(startYear, month + 1, 0)).getUTCDate();
 
       missingTransactions.push({
         description: subscription.description,
         amount: subscription.amount,
-        date: chargeDate,
+        date: new Date(Date.UTC(startYear, month, Math.min(day, daysInMonth))),
         type: subscription.type,
         userId: subscription.userId,
         categoryId: subscription.categoryId,
         paymentMethod: subscription.paymentMethod,
         recurrenceId: subscription.id,
+        installmentNumber: period,
       });
     }
 
-    await prisma.transaction.createMany({ data: missingTransactions });
+    await prisma.$transaction([
+      prisma.transaction.createMany({ data: missingTransactions, skipDuplicates: true }),
+      prisma.recurrence.update({
+        where: { id: subscription.id },
+        data: { lastGeneratedPeriod: currentPeriod },
+      }),
+    ]);
   }
 }
