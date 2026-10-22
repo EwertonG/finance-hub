@@ -92,6 +92,7 @@ model Transaction {
   createdAt   DateTime        @default(now()) @map("created_at")
 
   @@index([userId, date])
+  @@unique([recurrenceId, installmentNumber])
   @@index([recurrenceId])
   @@index([categoryId])
   @@index([userId, createdAt])
@@ -109,6 +110,7 @@ model Recurrence {
   startDate        DateTime        @map("start_date")
   installmentTotal Int?            @map("installment_total")
   active           Boolean         @default(true)
+  lastGeneratedPeriod Int          @default(0) @map("last_generated_period")
   paymentMethod    PaymentMethod?  @map("payment_method")
 
   userId           String          @map("user_id")

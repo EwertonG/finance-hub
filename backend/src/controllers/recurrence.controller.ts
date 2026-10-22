@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
+import { ensureSubscriptionTransactions, subscriptionPeriod } from '../lib/recurrence.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
@@ -195,10 +195,26 @@ export async function updateRecurrence(req: Request, res: Response) {
       return res.status(400).json({ error: 'Somente assinaturas podem ser ativadas ou canceladas.' });
     }
 
+    const reactivating = Boolean(active) && !existing.active;
+
     const updated = await prisma.recurrence.update({
       where: { id: String(id) },
-      data: { active: Boolean(active) },
+      data: {
+        active: Boolean(active),
+        ...(reactivating
+          ? {
+              lastGeneratedPeriod: Math.max(
+                existing.lastGeneratedPeriod,
+                subscriptionPeriod(existing.startDate) - 1
+              ),
+            }
+          : {}),
+      },
     });
+
+    if (reactivating) {
+      await ensureSubscriptionTransactions(userId, true);
+    }
 
     return res.json(updated);
   } catch (error) {
