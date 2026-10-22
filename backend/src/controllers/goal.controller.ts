@@ -171,6 +171,21 @@ export async function createContribution(req: Request, res: Response) {
       return res.status(400).json({ error: 'type deve ser DEPOSIT ou WITHDRAWAL.' });
     }
 
+    if (type === 'WITHDRAWAL') {
+      const totals = await prisma.goalContribution.groupBy({
+        by: ['type'],
+        where: { goalId: goal.id },
+        _sum: { amount: true },
+      });
+      const sumOf = (t: 'DEPOSIT' | 'WITHDRAWAL') =>
+        Number(totals.find((row) => row.type === t)?._sum.amount ?? 0);
+      const balance = sumOf('DEPOSIT') - sumOf('WITHDRAWAL');
+
+      if (amountNumber > Number(balance.toFixed(2))) {
+        return res.status(400).json({ error: 'O valor do resgate é maior que o saldo da meta.' });
+      }
+    }
+
     const contribution = await prisma.goalContribution.create({
       data: {
         amount: amountNumber,
