@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
+import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
 
@@ -39,17 +40,8 @@ export async function createTransaction(req: Request, res: Response) {
       return res.status(400).json({ error: 'Forma de pagamento inválida.' });
     }
 
-    if (categoryId) {
-      const categoryExists = await prisma.category.findFirst({
-        where: {
-          id: String(categoryId),
-          userId,
-        },
-      });
-
-      if (!categoryExists) {
-        return res.status(400).json({ error: 'Categoria informada não existe ou não pertence a este usuário.' });
-      }
+    if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
+      return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
     }
 
     const transaction = await prisma.transaction.create({
@@ -264,6 +256,10 @@ export async function updateTransaction(req: Request, res: Response) {
 
     if (!existingTransaction) {
       return res.status(404).json({ error: 'Lançamento não encontrado.' });
+    }
+
+    if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
+      return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
     }
 
     const updatedTransaction = await prisma.transaction.update({

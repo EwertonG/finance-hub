@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
+import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 
 export async function createDebtor(req: Request, res: Response) {
   try {
@@ -27,6 +28,10 @@ export async function createDebtor(req: Request, res: Response) {
     const totalAmountNumber = Number(totalAmount);
     if (isNaN(totalAmountNumber) || totalAmountNumber <= 0) {
       return res.status(400).json({ error: 'O valor total deve ser um número positivo.' });
+    }
+
+    if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
+      return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
     }
 
     const numberOfFriends = people.length;
