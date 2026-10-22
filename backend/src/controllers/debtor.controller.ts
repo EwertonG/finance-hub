@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
+import { parsePositiveAmount } from '../lib/amount.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 
 export async function createDebtor(req: Request, res: Response) {
@@ -184,6 +185,10 @@ export async function updateDebtor(req: Request, res: Response) {
 
     if (!id || typeof id !== 'string') {
       return res.status(400).json({ error: 'ID do devedor inválido.' });
+    }
+
+    if (amount !== undefined && parsePositiveAmount(amount) === null) {
+      return res.status(400).json({ error: 'O valor deve ser um número positivo.' });
     }
 
     const existingDebtor = await prisma.debtor.findFirst({

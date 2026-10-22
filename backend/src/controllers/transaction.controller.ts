@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
+import { parsePositiveAmount } from '../lib/amount.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
@@ -36,6 +37,11 @@ export async function createTransaction(req: Request, res: Response) {
       return res.status(400).json({ error: 'O tipo deve ser INCOME ou EXPENSE.' });
     }
 
+    const amountNumber = parsePositiveAmount(amount);
+    if (amountNumber === null) {
+      return res.status(400).json({ error: 'O valor deve ser um número positivo.' });
+    }
+
     if (paymentMethod && !PAYMENT_METHODS.includes(paymentMethod)) {
       return res.status(400).json({ error: 'Forma de pagamento inválida.' });
     }
@@ -47,7 +53,7 @@ export async function createTransaction(req: Request, res: Response) {
     const transaction = await prisma.transaction.create({
       data: {
         description,
-        amount: Number(amount),
+        amount: amountNumber,
         date: new Date(date),
         type,
         userId,
@@ -245,6 +251,10 @@ export async function updateTransaction(req: Request, res: Response) {
 
     if (paymentMethod && !PAYMENT_METHODS.includes(paymentMethod)) {
       return res.status(400).json({ error: 'Forma de pagamento inválida.' });
+    }
+
+    if (amount !== undefined && parsePositiveAmount(amount) === null) {
+      return res.status(400).json({ error: 'O valor deve ser um número positivo.' });
     }
 
     const existingTransaction = await prisma.transaction.findFirst({
