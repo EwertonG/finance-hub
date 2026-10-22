@@ -186,8 +186,8 @@ export async function changePassword(req: Request, res: Response) {
       return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
     }
 
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres.' });
+    if (!PASSWORD_REGEX.test(newPassword)) {
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });

@@ -7,6 +7,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeMode } from '../../contexts/ThemeModeContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import { PASSWORD_REGEX, PASSWORD_REQUIREMENTS_MESSAGE } from '../../constants/password';
 
 const formatDate = (dateString: string) => {
   const datePart = dateString.split('T')[0];
@@ -49,6 +50,11 @@ export const Profile: React.FC = () => {
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword) return;
+
+    if (!PASSWORD_REGEX.test(newPassword)) {
+      notify(PASSWORD_REQUIREMENTS_MESSAGE, 'error');
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       notify('A nova senha e a confirmação não coincidem.', 'error');
@@ -143,8 +149,7 @@ export const Profile: React.FC = () => {
               fullWidth
               required
               size="small"
-              slotProps={{ htmlInput: { minLength: 6 } }}
-              helperText="Mínimo de 6 caracteres"
+              helperText="Mínimo de 8 caracteres, com maiúscula, minúscula, número e símbolo"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
