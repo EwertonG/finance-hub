@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
+import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
 
@@ -42,14 +43,8 @@ export async function createRecurrence(req: Request, res: Response) {
       return res.status(400).json({ error: 'Forma de pagamento inválida.' });
     }
 
-    if (categoryId) {
-      const categoryExists = await prisma.category.findFirst({
-        where: { id: String(categoryId), userId },
-      });
-
-      if (!categoryExists) {
-        return res.status(400).json({ error: 'Categoria informada não existe ou não pertence a este usuário.' });
-      }
+    if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
+      return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
     }
 
     const start = new Date(startDate);
