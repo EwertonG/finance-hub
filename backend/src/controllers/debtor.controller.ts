@@ -42,32 +42,34 @@ export async function createDebtor(req: Request, res: Response) {
     const myShare = shares[totalParts - 1];
     const transactionDate = date ? new Date(date) : new Date();
 
-    let createdTransaction = null;
+    const { createdTransaction, createdDebtors } = await prisma.$transaction(async (tx) => {
+      const createdTransaction = mySplit
+        ? await tx.transaction.create({
+            data: {
+              description: `${item} (Minha parte - Divisão)`,
+              amount: myShare,
+              date: transactionDate,
+              type: 'EXPENSE',
+              userId,
+              categoryId: categoryId ? String(categoryId) : null,
+            },
+          })
+        : null;
 
-    if (mySplit) {
-      createdTransaction = await prisma.transaction.create({
-        data: {
-          description: `${item} (Minha parte - Divisão)`,
-          amount: myShare,
+      const createdDebtors = await tx.debtor.createManyAndReturn({
+        data: people.map((personName: string, index: number) => ({
+          personName: String(personName).trim(),
+          item,
+          amount: shares[index],
+          totalAmount: totalAmountNumber,
+          status: 'PENDING' as const,
           date: transactionDate,
-          type: 'EXPENSE',
           userId,
-          categoryId: categoryId ? String(categoryId) : null,
-        },
+          transactionId: createdTransaction ? createdTransaction.id : null,
+        })),
       });
-    }
 
-    const createdDebtors = await prisma.debtor.createManyAndReturn({
-      data: people.map((personName: string, index: number) => ({
-        personName: String(personName).trim(),
-        item,
-        amount: shares[index],
-        totalAmount: totalAmountNumber,
-        status: 'PENDING' as const,
-        date: transactionDate,
-        userId,
-        transactionId: createdTransaction ? createdTransaction.id : null,
-      })),
+      return { createdTransaction, createdDebtors };
     });
 
     return res.status(201).json({
