@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { parsePositiveAmount } from '../lib/amount.js';
 
 function summarizeGoal(goal: { targetAmount: unknown }, currentAmount: number) {
   const targetAmount = Number(goal.targetAmount);
@@ -100,7 +101,7 @@ export async function updateGoal(req: Request, res: Response) {
       return res.status(404).json({ error: 'Meta não encontrada.' });
     }
 
-    if (targetAmount !== undefined && Number(targetAmount) <= 0) {
+    if (targetAmount !== undefined && parsePositiveAmount(targetAmount) === null) {
       return res.status(400).json({ error: 'O valor alvo deve ser um número positivo.' });
     }
 

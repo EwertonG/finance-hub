@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { parsePositiveAmount } from '../lib/amount.js';
 
 export async function createCategory(req: Request, res: Response) {
   try {
@@ -16,6 +17,10 @@ export async function createCategory(req: Request, res: Response) {
 
     if (type !== 'INCOME' && type !== 'EXPENSE') {
       return res.status(400).json({ error: 'O tipo deve ser INCOME ou EXPENSE.' });
+    }
+
+    if (budget && parsePositiveAmount(budget) === null) {
+      return res.status(400).json({ error: 'O orçamento deve ser um número positivo.' });
     }
 
     const category = await prisma.category.create({
@@ -70,6 +75,10 @@ export async function updateCategory(req: Request, res: Response) {
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
+    }
+
+    if (budget && parsePositiveAmount(budget) === null) {
+      return res.status(400).json({ error: 'O orçamento deve ser um número positivo.' });
     }
 
     const existingCategory = await prisma.category.findFirst({
