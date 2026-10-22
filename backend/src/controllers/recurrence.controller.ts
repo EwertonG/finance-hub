@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions, subscriptionPeriod } from '../lib/recurrence.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
+import { splitAmount } from '../lib/money.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
 
@@ -68,48 +69,53 @@ export async function createRecurrence(req: Request, res: Response) {
         return res.status(400).json({ error: 'A parcela atual deve estar entre 1 e o total de parcelas.' });
       }
 
-      const installmentAmount = Number((totalAmountNumber / total).toFixed(2));
+      const installmentAmounts = splitAmount(totalAmountNumber, total);
+      const installmentAmount = installmentAmounts[0];
 
-      const recurrence = await prisma.recurrence.create({
-        data: {
-          description,
-          amount: installmentAmount,
-          type,
-          kind: 'INSTALLMENT',
-          startDate: start,
-          installmentTotal: total,
-          userId,
-          categoryId: categoryId ? String(categoryId) : null,
-          paymentMethod: paymentMethod || null,
-        },
-      });
-
-      // Parcelas restantes (a partir de startInstallment) são criadas de uma
-      // vez, já que o total é conhecido de antemão (diferente da assinatura,
-      // que não tem fim). Datas são UTC-meia-noite; usar getters locais
-      // deslocaria o dia.
       const startYear = start.getUTCFullYear();
       const startMonth = start.getUTCMonth();
       const startDay = start.getUTCDate();
-
       const remainingInstallments = total - startInstallment + 1;
-      const transactionsData = Array.from({ length: remainingInstallments }, (_, i) => {
-        const month = startMonth + i;
-        const daysInMonth = new Date(Date.UTC(startYear, month + 1, 0)).getUTCDate();
-        return {
-          description,
-          amount: installmentAmount,
-          date: new Date(Date.UTC(startYear, month, Math.min(startDay, daysInMonth))),
-          type,
-          userId,
-          categoryId: categoryId ? String(categoryId) : null,
-          paymentMethod: paymentMethod || null,
-          recurrenceId: recurrence.id,
-          installmentNumber: startInstallment + i,
-        };
-      });
 
-      await prisma.transaction.createMany({ data: transactionsData });
+      const recurrence = await prisma.$transaction(async (tx) => {
+        const created = await tx.recurrence.create({
+          data: {
+            description,
+            amount: installmentAmount,
+            type,
+            kind: 'INSTALLMENT',
+            startDate: start,
+            installmentTotal: total,
+            userId,
+            categoryId: categoryId ? String(categoryId) : null,
+            paymentMethod: paymentMethod || null,
+          },
+        });
+
+        // Parcelas restantes (a partir de startInstallment) são criadas de uma
+        // vez, já que o total é conhecido de antemão (diferente da assinatura,
+        // que não tem fim). Datas são UTC-meia-noite; usar getters locais
+        // deslocaria o dia.
+        await tx.transaction.createMany({
+          data: Array.from({ length: remainingInstallments }, (_, i) => {
+            const month = startMonth + i;
+            const daysInMonth = new Date(Date.UTC(startYear, month + 1, 0)).getUTCDate();
+            return {
+              description,
+              amount: installmentAmounts[startInstallment + i - 1],
+              date: new Date(Date.UTC(startYear, month, Math.min(startDay, daysInMonth))),
+              type,
+              userId,
+              categoryId: categoryId ? String(categoryId) : null,
+              paymentMethod: paymentMethod || null,
+              recurrenceId: created.id,
+              installmentNumber: startInstallment + i,
+            };
+          }),
+        });
+
+        return created;
+      });
 
       return res.status(201).json(recurrence);
     }
