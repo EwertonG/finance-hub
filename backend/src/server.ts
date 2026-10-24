@@ -18,7 +18,12 @@ const PORT = process.env.PORT || 3333;
 
 app.set('trust proxy', 1);
 
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({ origin: allowedOrigins }));
 app.use(compression());
 app.use(express.json());
 
