@@ -178,7 +178,7 @@ export const Debtors: React.FC = () => {
     undoableDelete({
       message: "Devedor excluído.",
       errorMessage: "Erro ao excluir devedor.",
-      remove: () => api.delete(`/debtors/${idToDelete}`),
+      url: `/debtors/${idToDelete}`,
       restore: () => queryClient.setQueryData(listQueryKey, previousData),
       onCommitted: () => queryClient.invalidateQueries({ queryKey: ["debtors"] }),
     });

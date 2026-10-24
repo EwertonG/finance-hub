@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
+import { parsePositiveAmount } from '../lib/amount.js';
+import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
+import { splitAmount } from '../lib/money.js';
 
 export async function createDebtor(req: Request, res: Response) {
   try {
@@ -29,39 +32,44 @@ export async function createDebtor(req: Request, res: Response) {
       return res.status(400).json({ error: 'O valor total deve ser um número positivo.' });
     }
 
-    const numberOfFriends = people.length;
-    const totalParts = mySplit ? numberOfFriends + 1 : numberOfFriends;
-    
-    // Valor individual para cada parte
-    const individualAmount = Number((totalAmountNumber / totalParts).toFixed(2));
-    const transactionDate = date ? new Date(date) : new Date();
-
-    let createdTransaction = null;
-
-    if (mySplit) {
-      createdTransaction = await prisma.transaction.create({
-        data: {
-          description: `${item} (Minha parte - Divisão)`,
-          amount: individualAmount,
-          date: transactionDate,
-          type: 'EXPENSE',
-          userId,
-          categoryId: categoryId ? String(categoryId) : null,
-        },
-      });
+    if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
+      return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
     }
 
-    const createdDebtors = await prisma.debtor.createManyAndReturn({
-      data: people.map((personName: string) => ({
-        personName: String(personName).trim(),
-        item,
-        amount: individualAmount,
-        totalAmount: totalAmountNumber,
-        status: 'PENDING' as const,
-        date: transactionDate,
-        userId,
-        transactionId: createdTransaction ? createdTransaction.id : null,
-      })),
+    const numberOfFriends = people.length;
+    const totalParts = mySplit ? numberOfFriends + 1 : numberOfFriends;
+    const shares = splitAmount(totalAmountNumber, totalParts);
+    const myShare = shares[totalParts - 1];
+    const transactionDate = date ? new Date(date) : new Date();
+
+    const { createdTransaction, createdDebtors } = await prisma.$transaction(async (tx) => {
+      const createdTransaction = mySplit
+        ? await tx.transaction.create({
+            data: {
+              description: `${item} (Minha parte - Divisão)`,
+              amount: myShare,
+              date: transactionDate,
+              type: 'EXPENSE',
+              userId,
+              categoryId: categoryId ? String(categoryId) : null,
+            },
+          })
+        : null;
+
+      const createdDebtors = await tx.debtor.createManyAndReturn({
+        data: people.map((personName: string, index: number) => ({
+          personName: String(personName).trim(),
+          item,
+          amount: shares[index],
+          totalAmount: totalAmountNumber,
+          status: 'PENDING' as const,
+          date: transactionDate,
+          userId,
+          transactionId: createdTransaction ? createdTransaction.id : null,
+        })),
+      });
+
+      return { createdTransaction, createdDebtors };
     });
 
     return res.status(201).json({
@@ -179,6 +187,10 @@ export async function updateDebtor(req: Request, res: Response) {
 
     if (!id || typeof id !== 'string') {
       return res.status(400).json({ error: 'ID do devedor inválido.' });
+    }
+
+    if (amount !== undefined && parsePositiveAmount(amount) === null) {
+      return res.status(400).json({ error: 'O valor deve ser um número positivo.' });
     }
 
     const existingDebtor = await prisma.debtor.findFirst({

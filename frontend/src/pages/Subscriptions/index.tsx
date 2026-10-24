@@ -92,7 +92,7 @@ export const Subscriptions: React.FC = () => {
     undoableDelete({
       message: 'Assinatura excluída. Os lançamentos já gerados serão mantidos.',
       errorMessage: 'Erro ao excluir assinatura. Tente novamente.',
-      remove: () => api.delete(`/recurrences/${idToDelete}`),
+      url: `/recurrences/${idToDelete}`,
       restore: () => queryClient.setQueryData(SUBSCRIPTIONS_QUERY_KEY, previousSubscriptions),
     });
   };

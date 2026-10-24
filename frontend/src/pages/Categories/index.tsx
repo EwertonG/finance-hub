@@ -19,7 +19,6 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 
-import { api } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useUndoableDelete } from '../../hooks/useUndoableDelete';
 import { useCategories, type Category } from '../../hooks/useCategories';
@@ -61,7 +60,7 @@ export const Categories = () => {
     undoableDelete({
       message: 'Categoria excluída.',
       errorMessage: 'Erro ao excluir a categoria. Verifique se há transações vinculadas a ela.',
-      remove: () => api.delete(`/categories/${idToDelete}`),
+      url: `/categories/${idToDelete}`,
       restore: () => queryClient.setQueryData(categoriesQueryKey, previousCategories),
     });
   };

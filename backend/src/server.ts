@@ -16,7 +16,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3333;
 
-app.use(cors());
+app.set('trust proxy', 1);
+
+const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({ origin: allowedOrigins }));
 app.use(compression());
 app.use(express.json());
 

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { parsePositiveAmount } from '../lib/amount.js';
 
 function summarizeGoal(goal: { targetAmount: unknown }, currentAmount: number) {
   const targetAmount = Number(goal.targetAmount);
@@ -100,7 +101,7 @@ export async function updateGoal(req: Request, res: Response) {
       return res.status(404).json({ error: 'Meta não encontrada.' });
     }
 
-    if (targetAmount !== undefined && Number(targetAmount) <= 0) {
+    if (targetAmount !== undefined && parsePositiveAmount(targetAmount) === null) {
       return res.status(400).json({ error: 'O valor alvo deve ser um número positivo.' });
     }
 
@@ -168,6 +169,21 @@ export async function createContribution(req: Request, res: Response) {
 
     if (type !== 'DEPOSIT' && type !== 'WITHDRAWAL') {
       return res.status(400).json({ error: 'type deve ser DEPOSIT ou WITHDRAWAL.' });
+    }
+
+    if (type === 'WITHDRAWAL') {
+      const totals = await prisma.goalContribution.groupBy({
+        by: ['type'],
+        where: { goalId: goal.id },
+        _sum: { amount: true },
+      });
+      const sumOf = (t: 'DEPOSIT' | 'WITHDRAWAL') =>
+        Number(totals.find((row) => row.type === t)?._sum.amount ?? 0);
+      const balance = sumOf('DEPOSIT') - sumOf('WITHDRAWAL');
+
+      if (amountNumber > Number(balance.toFixed(2))) {
+        return res.status(400).json({ error: 'O valor do resgate é maior que o saldo da meta.' });
+      }
     }
 
     const contribution = await prisma.goalContribution.create({

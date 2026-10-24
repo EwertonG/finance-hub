@@ -112,7 +112,7 @@ export const Goals: React.FC = () => {
     undoableDelete({
       message: 'Meta excluída.',
       errorMessage: 'Erro ao excluir meta. Tente novamente.',
-      remove: () => api.delete(`/goals/${idToDelete}`),
+      url: `/goals/${idToDelete}`,
       restore: () => queryClient.setQueryData(GOALS_QUERY_KEY, previousGoals),
     });
   };

@@ -1,12 +1,23 @@
 import { useCallback } from 'react';
+import type { AxiosRequestConfig } from 'axios';
+import { api } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';
 
 const UNDO_WINDOW_MS = 5000;
+const KEEPALIVE_CONFIG: AxiosRequestConfig = { adapter: 'fetch', fetchOptions: { keepalive: true } };
+
+const pendingDeletes = new Map<ReturnType<typeof setTimeout>, () => void>();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    pendingDeletes.forEach((flush) => flush());
+  });
+}
 
 interface UndoableDeleteOptions {
   message: string;
   errorMessage: string;
-  remove: () => Promise<unknown>;
+  url: string;
   restore: () => void;
   onCommitted?: () => void;
 }
@@ -17,27 +28,32 @@ export function useUndoableDelete() {
   const { notify } = useNotification();
 
   return useCallback(
-    ({ message, errorMessage, remove, restore, onCommitted }: UndoableDeleteOptions) => {
-      let undone = false;
-
-      const timer = setTimeout(async () => {
-        if (undone) return;
+    ({ message, errorMessage, url, restore, onCommitted }: UndoableDeleteOptions) => {
+      const commit = async (config?: AxiosRequestConfig) => {
+        pendingDeletes.delete(timer);
         try {
-          await remove();
+          await api.delete(url, config);
           onCommitted?.();
         } catch (error) {
           console.error(errorMessage, error);
           restore();
           notify(errorMessage, 'error');
         }
-      }, UNDO_WINDOW_MS);
+      };
+
+      const timer = setTimeout(() => commit(), UNDO_WINDOW_MS);
+
+      pendingDeletes.set(timer, () => {
+        clearTimeout(timer);
+        commit(KEEPALIVE_CONFIG);
+      });
 
       notify(message, 'success', {
         actionLabel: 'Desfazer',
         duration: UNDO_WINDOW_MS,
         onAction: () => {
-          undone = true;
           clearTimeout(timer);
+          pendingDeletes.delete(timer);
           restore();
         },
       });

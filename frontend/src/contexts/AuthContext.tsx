@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { api, TOKEN_STORAGE_KEY } from '../services/api';
 
 interface User {
   id: string;
@@ -25,14 +25,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     async function loadStoragedUser() {
-      const storedToken = localStorage.getItem('@CentralFinancas:token');
+      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
 
       if (storedToken) {
         try {
           const response = await api.get('/auth/me');
           setUser(response.data.user);
         } catch (error) {
-          localStorage.removeItem('@CentralFinancas:token');
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
           setUser(null);
         }
       }
@@ -44,12 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   function signIn(token: string, userData: User) {
-    localStorage.setItem('@CentralFinancas:token', token);
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
     setUser(userData);
   }
 
   function signOut() {
-    localStorage.removeItem('@CentralFinancas:token');
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
     setUser(null);
   }
 
