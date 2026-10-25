@@ -18,6 +18,11 @@ function parsePaymentMethodFilter(paymentMethod: unknown) {
   return methods.length > 0 ? methods : undefined;
 }
 
+function buildSearchFilter(search: unknown) {
+  const term = typeof search === 'string' ? search.trim() : '';
+  return term ? { description: { contains: term, mode: 'insensitive' as const } } : {};
+}
+
 export async function createTransaction(req: Request, res: Response) {
   try {
     const userId = req.userId;
@@ -75,7 +80,7 @@ export async function createTransaction(req: Request, res: Response) {
 export async function listTransactions(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { month, year, type, categoryId, paymentMethod, page, limit } = req.query;
+    const { month, year, type, categoryId, paymentMethod, search, page, limit } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -91,6 +96,7 @@ export async function listTransactions(req: Request, res: Response) {
       ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
       ...(categoryId ? { categoryId: String(categoryId) } : {}),
       ...(paymentMethods ? { paymentMethod: { in: paymentMethods as ('PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH')[] } } : {}),
+      ...buildSearchFilter(search),
     };
 
     // "limit" ausente = sem paginação (usado pelo Dashboard, que precisa do
@@ -127,7 +133,7 @@ export async function listTransactions(req: Request, res: Response) {
 export async function getTransactionSummary(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { month, year, type, categoryId, paymentMethod } = req.query;
+    const { month, year, type, categoryId, paymentMethod, search } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -150,6 +156,7 @@ export async function getTransactionSummary(req: Request, res: Response) {
         ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
         ...(categoryId ? { categoryId: String(categoryId) } : {}),
         ...(paymentMethods ? { paymentMethod: { in: paymentMethods as ('PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH')[] } } : {}),
+        ...buildSearchFilter(search),
       },
       _sum: { amount: true },
     });

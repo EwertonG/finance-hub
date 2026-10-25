@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './config/swagger.js';
@@ -17,6 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 3333;
 
 app.set('trust proxy', 1);
+app.use(helmet());
 
 const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173')
   .split(',')
@@ -27,7 +29,11 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(compression());
 app.use(express.json());
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+const apiDocsEnabled = process.env.API_DOCS_ENABLED === 'true';
+
+if (apiDocsEnabled) {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+}
 
 app.get('/health', (req, res) => {
   return res.json({ status: 'ok', message: 'API está rodando!' });
@@ -42,5 +48,7 @@ app.use('/goals', goalRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
-  console.log(`Swagger http://localhost:${PORT}/api-docs`);
+  if (apiDocsEnabled) {
+    console.log(`Swagger http://localhost:${PORT}/api-docs`);
+  }
 });
