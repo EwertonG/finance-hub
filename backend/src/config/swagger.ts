@@ -76,6 +76,50 @@ export const swaggerDocument = {
         responses: { 200: { description: 'Login realizado com sucesso' } },
       },
     },
+    '/auth/forgot-password': {
+      post: {
+        tags: ['Autenticação'],
+        summary: 'Solicitar e-mail de redefinição de senha',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: { email: { type: 'string', example: 'ewerton@teste.com' } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Resposta genérica, exista ou não a conta' } },
+      },
+    },
+    '/auth/reset-password': {
+      post: {
+        tags: ['Autenticação'],
+        summary: 'Redefinir a senha com o token recebido por e-mail',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['token', 'password'],
+                properties: {
+                  token: { type: 'string' },
+                  password: { type: 'string', example: 'NovaSenha@123' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          204: { description: 'Senha redefinida' },
+          400: { description: 'Link inválido ou expirado' },
+        },
+      },
+    },
     '/auth/me': {
       get: {
         tags: ['Autenticação'],

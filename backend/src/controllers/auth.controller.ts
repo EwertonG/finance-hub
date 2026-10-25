@@ -3,6 +3,9 @@ import { prisma } from '../lib/prisma.js';
 import { hashPassword, comparePassword } from '../utils/hash.js';
 import { generateToken } from '../utils/jwt.js';
 import { DEFAULT_CATEGORIES } from '../constants/defaultCategories.js';
+import { createHash, randomBytes } from 'node:crypto';
+import { sendEmail } from '../lib/email.js';
+import { getFrontendUrl } from '../config/origins.js';
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 const PASSWORD_REQUIREMENTS_MESSAGE =
@@ -220,5 +223,142 @@ export async function changePassword(req: Request, res: Response) {
   } catch (error) {
     console.error('Erro ao trocar senha:', error);
     return res.status(500).json({ error: 'Erro interno ao trocar senha.' });
+  }
+}
+
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+const FORGOT_PASSWORD_MESSAGE =
+  'Se este e-mail estiver cadastrado, você receberá um link para redefinir a senha.';
+const INVALID_RESET_LINK_MESSAGE = 'Link inválido ou expirado. Solicite um novo.';
+
+function hashResetToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+function buildResetEmail(name: string, link: string) {
+  const text = [
+    `Olá, ${name}!`,
+    '',
+    'Recebemos um pedido para redefinir a senha da sua conta no CentralFinanças.',
+    '',
+    'Acesse o link abaixo para criar uma nova senha (válido por 30 minutos):',
+    link,
+    '',
+    'Se você não fez esse pedido, ignore este e-mail. Sua senha continua a mesma.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1E293B;">
+      <h2 style="color: #047857;">Redefinição de senha</h2>
+      <p>Olá, ${escapeHtml(name)}!</p>
+      <p>Recebemos um pedido para redefinir a senha da sua conta no CentralFinanças.</p>
+      <p>
+        <a href="${link}" style="display: inline-block; padding: 12px 20px; background: #047857; color: #FFFFFF; text-decoration: none; border-radius: 8px;">
+          Criar nova senha
+        </a>
+      </p>
+      <p style="color: #64748B; font-size: 14px;">O link é válido por 30 minutos.</p>
+      <p style="color: #64748B; font-size: 14px;">Se você não fez esse pedido, ignore este e-mail. Sua senha continua a mesma.</p>
+    </div>
+  `;
+
+  return { text, html };
+}
+
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    const email = req.body.email ? normalizeEmail(req.body.email) : '';
+
+    if (!email) {
+      return res.status(400).json({ error: 'Informe o e-mail.' });
+    }
+
+    const users = await prisma.user.findMany({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: { id: true, name: true, email: true },
+    });
+
+    for (const user of users) {
+      const token = randomBytes(32).toString('hex');
+
+      await prisma.$transaction([
+        prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),
+        prisma.passwordResetToken.create({
+          data: {
+            tokenHash: hashResetToken(token),
+            userId: user.id,
+            expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+          },
+        }),
+      ]);
+
+      const link = `${getFrontendUrl()}/reset-password?token=${token}`;
+      const { text, html } = buildResetEmail(user.name, link);
+
+      sendEmail({ to: user.email, subject: 'Redefinição de senha - CentralFinanças', text, html }).catch(
+        (error) => console.error('Erro ao enviar e-mail de redefinição:', error)
+      );
+    }
+
+    return res.json({ message: FORGOT_PASSWORD_MESSAGE });
+  } catch (error) {
+    console.error('Erro ao solicitar redefinição de senha:', error);
+    return res.status(500).json({ error: 'Erro interno ao solicitar redefinição de senha.' });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+    }
+
+    if (!PASSWORD_REGEX.test(password)) {
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+    }
+
+    const record = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash: hashResetToken(String(token)) },
+    });
+
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      return res.status(400).json({ error: INVALID_RESET_LINK_MESSAGE });
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    const reset = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.passwordResetToken.updateMany({
+        where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() },
+      });
+
+      if (claimed.count === 0) return false;
+
+      await tx.user.update({
+        where: { id: record.userId },
+        data: { passwordHash, tokenVersion: { increment: 1 } },
+      });
+      await tx.passwordResetToken.deleteMany({
+        where: { userId: record.userId, id: { not: record.id } },
+      });
+
+      return true;
+    });
+
+    if (!reset) {
+      return res.status(400).json({ error: INVALID_RESET_LINK_MESSAGE });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Erro ao redefinir senha:', error);
+    return res.status(500).json({ error: 'Erro interno ao redefinir senha.' });
   }
 }
