@@ -9,6 +9,8 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeModeProvider, useThemeMode } from './contexts/ThemeModeContext';
 import { Login } from './pages/Auth/Login';
 import { Register } from './pages/Auth/Register';
+import { ForgotPassword } from './pages/Auth/ForgotPassword';
+import { ResetPassword } from './pages/Auth/ResetPassword';
 import { MainLayout } from './layouts/MainLayout/index';
 import { PeriodProvider } from './contexts/PeriodContext';
 
@@ -67,6 +69,22 @@ const AppRoutes: React.FC = () => {
                   element={
                     <ThemeProvider theme={lightTheme}>
                       <Register />
+                    </ThemeProvider>
+                  }
+                />
+                <Route
+                  path="/forgot-password"
+                  element={
+                    <ThemeProvider theme={lightTheme}>
+                      <ForgotPassword />
+                    </ThemeProvider>
+                  }
+                />
+                <Route
+                  path="/reset-password"
+                  element={
+                    <ThemeProvider theme={lightTheme}>
+                      <ResetPassword />
                     </ThemeProvider>
                   }
                 />
