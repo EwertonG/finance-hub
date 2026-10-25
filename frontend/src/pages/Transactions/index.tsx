@@ -21,7 +21,10 @@ import {
   Select,
   MenuItem,
   Pagination,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
@@ -64,6 +67,7 @@ interface SummaryResponse {
 }
 
 const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
 
 // Débito e Pix são tratados como um filtro só (ambos saem na hora da conta
 // corrente, sem fatura) — o backend aceita lista separada por vírgula.
@@ -82,6 +86,8 @@ export const Transactions: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('ALL');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const { data: categories = [] } = useCategories();
   const [page, setPage] = useState(1);
 
@@ -102,6 +108,7 @@ export const Transactions: React.FC = () => {
     ...(typeFilter !== 'ALL' ? { type: typeFilter } : {}),
     ...(categoryFilter !== 'ALL' ? { categoryId: categoryFilter } : {}),
     ...(paymentMethodFilter !== 'ALL' ? { paymentMethod: paymentMethodFilter } : {}),
+    ...(search ? { search } : {}),
   };
 
   const listParams = {
@@ -148,6 +155,14 @@ export const Transactions: React.FC = () => {
   useEffect(() => {
     setPage(1);
   }, [month, year, viewMode]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const handleTypeFilterChange = (value: string) => {
     setTypeFilter(value);
@@ -255,7 +270,23 @@ export const Transactions: React.FC = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Barra de Ações Superior */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <TextField
+            size="small"
+            placeholder="Buscar por descrição"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            sx={{ minWidth: 220, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Tipo</InputLabel>
             <Select
@@ -414,7 +445,11 @@ export const Transactions: React.FC = () => {
                       <EmptyState
                         variant="plain"
                         icon={<ReceiptLongRoundedIcon />}
-                        message="Nenhum lançamento encontrado neste período"
+                        message={
+                          search
+                            ? `Nenhum lançamento encontrado para "${search}"`
+                            : 'Nenhum lançamento encontrado neste período'
+                        }
                       />
                     </TableCell>
                   </TableRow>
