@@ -11,6 +11,7 @@ import { transactionRoutes } from './routes/transaction.routes.js';
 import { debtorRoutes } from './routes/debtor.routes.js';
 import { recurrenceRoutes } from './routes/recurrence.routes.js';
 import { goalRoutes } from './routes/goal.routes.js';
+import { allowedOrigins } from './config/origins.js';
 
 dotenv.config();
 
@@ -19,11 +20,6 @@ const PORT = process.env.PORT || 3333;
 
 app.set('trust proxy', 1);
 app.use(helmet());
-
-const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(compression());

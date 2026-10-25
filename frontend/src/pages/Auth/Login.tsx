@@ -159,6 +159,16 @@ export const Login: React.FC = () => {
                   },
                 }}
               />
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+                <Typography
+                  component={Link}
+                  to="/forgot-password"
+                  variant="caption"
+                  sx={{ color: '#047857', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  Esqueci minha senha
+                </Typography>
+              </Box>
             </Box>
 
             <Button
