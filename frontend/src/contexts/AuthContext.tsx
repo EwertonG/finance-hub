@@ -15,6 +15,7 @@ interface AuthContextData {
   signIn: (token: string, user: User) => void;
   signOut: () => void;
   updateUser: (user: User) => void;
+  updateToken: (token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -57,8 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
   }
 
+  function updateToken(token: string) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, signIn, signOut, updateUser }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, signIn, signOut, updateUser, updateToken }}>
       {children}
     </AuthContext.Provider>
   );

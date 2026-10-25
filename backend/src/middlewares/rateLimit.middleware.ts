@@ -25,3 +25,22 @@ export const registerRateLimit = rateLimit({
   keyGenerator: clientIpKey,
   message: { error: 'Muitas contas criadas a partir deste acesso. Tente novamente mais tarde.' },
 });
+
+export const passwordResetRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: clientIpKey,
+  message: { error: 'Muitos pedidos de redefinição de senha. Tente novamente mais tarde.' },
+});
+
+export const resetPasswordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: clientIpKey,
+  message: { error: 'Muitas tentativas. Tente novamente em 15 minutos.' },
+});
