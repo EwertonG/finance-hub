@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   IconButton,
   Skeleton,
   Tooltip,
@@ -21,7 +20,7 @@ import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 
 import { useNotification } from '../../contexts/NotificationContext';
 import { useUndoableDelete } from '../../hooks/useUndoableDelete';
-import { useCategories, type Category } from '../../hooks/useCategories';
+import { useCategories, CATEGORIES_QUERY_KEY, type Category } from '../../hooks/useCategories';
 
 import { CategoryModal } from './components/CategoryModal';
 import { EmptyState } from '../../components/EmptyState';
@@ -34,7 +33,7 @@ const formatCurrency = (value: number) =>
 export const Categories = () => {
   const theme = useTheme();
   const queryClient = useQueryClient();
-  const categoriesQueryKey = ['categories', 'ALL'];
+  const categoriesQueryKey = CATEGORIES_QUERY_KEY;
 
   const { data: categories = [], isLoading, isError, refetch } = useCategories();
 
@@ -136,7 +135,6 @@ export const Categories = () => {
         <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
           <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
             {categories.map((category, index) => {
-              const isIncome = category.type === 'INCOME';
               const CategoryIcon = getCategoryIconComponent(category.icon);
 
               return (
@@ -169,17 +167,6 @@ export const Categories = () => {
                       </Typography>
                     )}
                   </Box>
-
-                  <Chip
-                    label={isIncome ? 'Receita' : 'Despesa'}
-                    size="small"
-                    sx={{
-                      borderRadius: 1.5,
-                      bgcolor: isIncome ? 'success.light' : 'error.light',
-                      color: isIncome ? 'success.dark' : 'error.dark',
-                      fontWeight: 600,
-                    }}
-                  />
 
                   <Box sx={{ display: 'flex', gap: 0.5 }}>
                     <Tooltip title="Editar">

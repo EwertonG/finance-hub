@@ -237,7 +237,7 @@ export function useDashboardData() {
   // ainda aparece, com 0 gasto.
   const spentByCategoryId = new Map((categoryBreakdownQuery.data ?? []).map((row) => [row.categoryId, row.amount]));
   const budgetProgress: BudgetProgressItem[] = categories
-    .filter((c) => c.type === 'EXPENSE' && c.budget != null)
+    .filter((c) => c.budget != null)
     .map((c) => ({
       categoryId: c.id,
       name: c.name,
