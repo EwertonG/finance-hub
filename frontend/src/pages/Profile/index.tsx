@@ -17,7 +17,7 @@ const formatDate = (dateString: string) => {
 
 export const Profile: React.FC = () => {
   const theme = useTheme();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, updateToken } = useAuth();
   const { mode, toggleMode } = useThemeMode();
   const { notify } = useNotification();
 
@@ -63,7 +63,8 @@ export const Profile: React.FC = () => {
 
     try {
       setIsSavingPassword(true);
-      await api.put('/auth/me/password', { currentPassword, newPassword });
+      const response = await api.put<{ token: string }>('/auth/me/password', { currentPassword, newPassword });
+      updateToken(response.data.token);
       notify('Senha alterada com sucesso!', 'success');
       setCurrentPassword('');
       setNewPassword('');

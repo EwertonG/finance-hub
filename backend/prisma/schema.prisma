@@ -39,6 +39,7 @@ model User {
   name         String
   email        String        @unique
   passwordHash String        @map("password_hash")
+  tokenVersion Int           @default(0) @map("token_version")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   categories   Category[]

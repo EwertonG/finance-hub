@@ -54,7 +54,7 @@ export async function register(req: Request, res: Response) {
       data: DEFAULT_CATEGORIES.map((category) => ({ ...category, userId: user.id })),
     });
 
-    const token = generateToken({ userId: user.id });
+    const token = generateToken({ userId: user.id, tokenVersion: 0 });
 
     return res.status(201).json({
       user,
@@ -92,7 +92,7 @@ export async function login(req: Request, res: Response) {
       return res.status(400).json({ error: 'E-mail ou senha inválidos.' });
     }
 
-    const token = generateToken({ userId: user.id });
+    const token = generateToken({ userId: user.id, tokenVersion: user.tokenVersion });
 
     return res.json({
       user: {
@@ -210,12 +210,13 @@ export async function changePassword(req: Request, res: Response) {
     }
 
     const passwordHash = await hashPassword(newPassword);
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
+      select: { tokenVersion: true },
     });
 
-    return res.status(204).send();
+    return res.json({ token: generateToken({ userId, tokenVersion: updated.tokenVersion }) });
   } catch (error) {
     console.error('Erro ao trocar senha:', error);
     return res.status(500).json({ error: 'Erro interno ao trocar senha.' });

@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt.js';
+import { prisma } from '../lib/prisma.js';
 
-export function authMiddleware(
+export async function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
@@ -21,13 +22,22 @@ export function authMiddleware(
 
   const token = parts[1];
 
+  let decoded;
   try {
-    const decoded = verifyToken(token);
-
-    req.userId = decoded.userId;
-
-    return next();
-  } catch (error) {
+    decoded = verifyToken(token);
+  } catch {
     return res.status(401).json({ error: 'Token inválido ou expirado.' });
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.userId },
+    select: { tokenVersion: true },
+  });
+
+  if (!user || (decoded.tokenVersion ?? 0) !== user.tokenVersion) {
+    return res.status(401).json({ error: 'Sessão encerrada. Faça login novamente.' });
+  }
+
+  req.userId = decoded.userId;
+  return next();
 }
