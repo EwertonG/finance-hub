@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './config/swagger.js';
@@ -17,6 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 3333;
 
 app.set('trust proxy', 1);
+app.use(helmet());
 
 const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173')
   .split(',')
