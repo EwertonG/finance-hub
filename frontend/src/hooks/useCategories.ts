@@ -6,18 +6,17 @@ export interface Category {
   name: string;
   color: string;
   icon: string;
-  type: 'INCOME' | 'EXPENSE';
   budget: number | null;
   createdAt: string;
 }
 
-export function useCategories(type?: 'INCOME' | 'EXPENSE') {
+export const CATEGORIES_QUERY_KEY = ['categories'];
+
+export function useCategories() {
   return useQuery({
-    queryKey: ['categories', type ?? 'ALL'],
+    queryKey: CATEGORIES_QUERY_KEY,
     queryFn: async () => {
-      const response = await api.get<Category[]>('/categories', {
-        params: type ? { type } : undefined,
-      });
+      const response = await api.get<Category[]>('/categories');
       return response.data;
     },
     staleTime: 5 * 60 * 1000,

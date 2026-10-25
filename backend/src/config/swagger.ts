@@ -141,11 +141,12 @@ export const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['name', 'type'],
+                required: ['name'],
                 properties: {
                   name: { type: 'string', example: 'Lazer / Bar' },
                   color: { type: 'string', example: '#10B981' },
-                  type: { type: 'string', enum: ['INCOME', 'EXPENSE'], example: 'EXPENSE' },
+                  icon: { type: 'string', example: 'SportsEsportsRounded' },
+                  budget: { type: 'number', example: 300 },
                 },
               },
             },

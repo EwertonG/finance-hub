@@ -2,25 +2,40 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { parsePositiveAmount } from '../lib/amount.js';
 
+const DUPLICATE_NAME_ERROR = 'Já existe uma categoria com esse nome.';
+
+async function nameInUse(userId: string, name: string, ignoreId?: string) {
+  const existing = await prisma.category.findFirst({
+    where: {
+      userId,
+      name: { equals: name, mode: 'insensitive' },
+      ...(ignoreId ? { NOT: { id: ignoreId } } : {}),
+    },
+    select: { id: true },
+  });
+  return existing !== null;
+}
+
 export async function createCategory(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { name, color, icon, type, budget } = req.body;
+    const { color, icon, budget } = req.body;
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
-    if (!name || !type) {
-      return res.status(400).json({ error: 'Nome e tipo (INCOME ou EXPENSE) são obrigatórios.' });
-    }
-
-    if (type !== 'INCOME' && type !== 'EXPENSE') {
-      return res.status(400).json({ error: 'O tipo deve ser INCOME ou EXPENSE.' });
+    if (!name) {
+      return res.status(400).json({ error: 'O nome é obrigatório.' });
     }
 
     if (budget && parsePositiveAmount(budget) === null) {
       return res.status(400).json({ error: 'O orçamento deve ser um número positivo.' });
+    }
+
+    if (await nameInUse(userId, name)) {
+      return res.status(400).json({ error: DUPLICATE_NAME_ERROR });
     }
 
     const category = await prisma.category.create({
@@ -28,7 +43,6 @@ export async function createCategory(req: Request, res: Response) {
         name,
         color: color || '#6B7280',
         icon: icon || 'MoreHorizRounded',
-        type,
         budget: budget ? Number(budget) : null,
         userId,
       },
@@ -44,17 +58,13 @@ export async function createCategory(req: Request, res: Response) {
 export async function listCategories(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { type } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
     const categories = await prisma.category.findMany({
-      where: {
-        userId,
-        ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type } : {}),
-      },
+      where: { userId },
       orderBy: {
         createdAt: 'asc',
       },
@@ -71,7 +81,8 @@ export async function updateCategory(req: Request, res: Response) {
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const { name, color, icon, type, budget } = req.body;
+    const { color, icon, budget } = req.body;
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -92,6 +103,10 @@ export async function updateCategory(req: Request, res: Response) {
       return res.status(404).json({ error: 'Categoria não encontrada.' });
     }
 
+    if (name && (await nameInUse(userId, name, existingCategory.id))) {
+      return res.status(400).json({ error: DUPLICATE_NAME_ERROR });
+    }
+
     const updatedCategory = await prisma.category.update({
       where: { 
         id: String(id) 
@@ -100,7 +115,6 @@ export async function updateCategory(req: Request, res: Response) {
         ...(name ? { name } : {}),
         ...(color ? { color } : {}),
         ...(icon ? { icon } : {}),
-        ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type } : {}),
         ...(budget !== undefined ? { budget: budget ? Number(budget) : null } : {}),
       },
     });
