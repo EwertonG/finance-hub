@@ -73,7 +73,6 @@ model Category {
   name         String
   color        String        @default("#6B7280")
   icon         String        @default("MoreHorizRounded")
-  type         TransactionType
   budget       Decimal?      @db.Decimal(10, 2)
   userId       String        @map("user_id")
   createdAt    DateTime      @default(now()) @map("created_at")
