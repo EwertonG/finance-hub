@@ -1,36 +1,19 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
-import { parsePositiveAmount } from '../lib/amount.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 import { splitAmount } from '../lib/money.js';
 
 export async function createDebtor(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { 
-      item, 
-      totalAmount, 
-      people, 
-      mySplit = true, 
-      categoryId, 
-      date 
-    } = req.body;
+    const { item, totalAmount, people, mySplit, categoryId, date } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
-    if (!item || totalAmount === undefined || !people || !Array.isArray(people) || people.length === 0) {
-      return res.status(400).json({
-        error: 'Descrição do item, valor total e uma lista com pelo menos 1 pessoa são obrigatórios.',
-      });
-    }
-
-    const totalAmountNumber = Number(totalAmount);
-    if (isNaN(totalAmountNumber) || totalAmountNumber <= 0) {
-      return res.status(400).json({ error: 'O valor total deve ser um número positivo.' });
-    }
+    const totalAmountNumber: number = totalAmount;
 
     if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
       return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
@@ -187,10 +170,6 @@ export async function updateDebtor(req: Request, res: Response) {
 
     if (!id || typeof id !== 'string') {
       return res.status(400).json({ error: 'ID do devedor inválido.' });
-    }
-
-    if (amount !== undefined && parsePositiveAmount(amount) === null) {
-      return res.status(400).json({ error: 'O valor deve ser um número positivo.' });
     }
 
     const existingDebtor = await prisma.debtor.findFirst({

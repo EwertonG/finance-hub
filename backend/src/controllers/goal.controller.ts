@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { parsePositiveAmount } from '../lib/amount.js';
 
 function summarizeGoal(goal: { targetAmount: unknown }, currentAmount: number) {
   const targetAmount = Number(goal.targetAmount);
@@ -22,14 +21,7 @@ export async function createGoal(req: Request, res: Response) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
-    if (!name || targetAmount === undefined) {
-      return res.status(400).json({ error: 'Nome e valor alvo são obrigatórios.' });
-    }
-
-    const targetAmountNumber = Number(targetAmount);
-    if (isNaN(targetAmountNumber) || targetAmountNumber <= 0) {
-      return res.status(400).json({ error: 'O valor alvo deve ser um número positivo.' });
-    }
+    const targetAmountNumber: number = targetAmount;
 
     const goal = await prisma.goal.create({
       data: {
@@ -101,10 +93,6 @@ export async function updateGoal(req: Request, res: Response) {
       return res.status(404).json({ error: 'Meta não encontrada.' });
     }
 
-    if (targetAmount !== undefined && parsePositiveAmount(targetAmount) === null) {
-      return res.status(400).json({ error: 'O valor alvo deve ser um número positivo.' });
-    }
-
     const updated = await prisma.goal.update({
       where: { id: String(id) },
       data: {
@@ -162,14 +150,7 @@ export async function createContribution(req: Request, res: Response) {
       return res.status(404).json({ error: 'Meta não encontrada.' });
     }
 
-    const amountNumber = Number(amount);
-    if (isNaN(amountNumber) || amountNumber <= 0) {
-      return res.status(400).json({ error: 'O valor deve ser um número positivo.' });
-    }
-
-    if (type !== 'DEPOSIT' && type !== 'WITHDRAWAL') {
-      return res.status(400).json({ error: 'type deve ser DEPOSIT ou WITHDRAWAL.' });
-    }
+    const amountNumber: number = amount;
 
     if (type === 'WITHDRAWAL') {
       const totals = await prisma.goalContribution.groupBy({

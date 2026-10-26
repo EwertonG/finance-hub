@@ -7,27 +7,10 @@ import { createHash, randomBytes } from 'node:crypto';
 import { sendEmail } from '../lib/email.js';
 import { getFrontendUrl } from '../config/origins.js';
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-const PASSWORD_REQUIREMENTS_MESSAGE =
-  'A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.';
-
-function normalizeEmail(email: unknown) {
-  return String(email).trim().toLowerCase();
-}
-
 /* Cadastro */
 export async function register(req: Request, res: Response) {
   try {
-    const { name, password } = req.body;
-    const email = req.body.email ? normalizeEmail(req.body.email) : '';
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Nome, e-mail e senha são obrigatórios.' });
-    }
-
-    if (!PASSWORD_REGEX.test(password)) {
-      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
-    }
+    const { name, email, password } = req.body;
 
     const userAlreadyExists = await prisma.user.findFirst({
       where: { email: { equals: email, mode: 'insensitive' } },
@@ -72,12 +55,7 @@ export async function register(req: Request, res: Response) {
 /* Login */
 export async function login(req: Request, res: Response) {
   try {
-    const { password } = req.body;
-    const email = req.body.email ? normalizeEmail(req.body.email) : '';
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
-    }
+    const { email, password } = req.body;
 
     const candidates = await prisma.user.findMany({
       where: { email: { equals: email, mode: 'insensitive' } },
@@ -143,15 +121,10 @@ export async function me(req: Request, res: Response) {
 export async function updateProfile(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { name } = req.body;
-    const email = req.body.email ? normalizeEmail(req.body.email) : '';
+    const { name, email } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Não autorizado.' });
-    }
-
-    if (!name && !email) {
-      return res.status(400).json({ error: 'Informe nome e/ou e-mail para atualizar.' });
     }
 
     if (email) {
@@ -192,14 +165,6 @@ export async function changePassword(req: Request, res: Response) {
 
     if (!userId) {
       return res.status(401).json({ error: 'Não autorizado.' });
-    }
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
-    }
-
-    if (!PASSWORD_REGEX.test(newPassword)) {
-      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -271,11 +236,7 @@ function buildResetEmail(name: string, link: string) {
 
 export async function forgotPassword(req: Request, res: Response) {
   try {
-    const email = req.body.email ? normalizeEmail(req.body.email) : '';
-
-    if (!email) {
-      return res.status(400).json({ error: 'Informe o e-mail.' });
-    }
+    const { email } = req.body;
 
     const users = await prisma.user.findMany({
       where: { email: { equals: email, mode: 'insensitive' } },
@@ -315,16 +276,8 @@ export async function resetPassword(req: Request, res: Response) {
   try {
     const { token, password } = req.body;
 
-    if (!token || !password) {
-      return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
-    }
-
-    if (!PASSWORD_REGEX.test(password)) {
-      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
-    }
-
     const record = await prisma.passwordResetToken.findUnique({
-      where: { tokenHash: hashResetToken(String(token)) },
+      where: { tokenHash: hashResetToken(token) },
     });
 
     if (!record || record.usedAt || record.expiresAt < new Date()) {
