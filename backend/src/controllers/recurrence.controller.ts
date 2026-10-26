@@ -4,8 +4,6 @@ import { ensureSubscriptionTransactions, subscriptionPeriod } from '../lib/recur
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 import { splitAmount } from '../lib/money.js';
 
-const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
-
 export async function createRecurrence(req: Request, res: Response) {
   try {
     const userId = req.userId;
@@ -26,48 +24,20 @@ export async function createRecurrence(req: Request, res: Response) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
 
-    if (!description || !type || !startDate || !kind) {
-      return res.status(400).json({
-        error: 'Descrição, tipo, data de início e tipo de recorrência são obrigatórios.',
-      });
-    }
-
-    if (type !== 'INCOME' && type !== 'EXPENSE') {
-      return res.status(400).json({ error: 'O tipo deve ser INCOME ou EXPENSE.' });
-    }
-
-    if (kind !== 'INSTALLMENT' && kind !== 'SUBSCRIPTION') {
-      return res.status(400).json({ error: 'kind deve ser INSTALLMENT ou SUBSCRIPTION.' });
-    }
-
-    if (paymentMethod && !PAYMENT_METHODS.includes(paymentMethod)) {
-      return res.status(400).json({ error: 'Forma de pagamento inválida.' });
-    }
-
     if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
       return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
     }
 
-    const start = new Date(startDate);
+    const start: Date = startDate;
 
     if (kind === 'INSTALLMENT') {
-      const total = parseInt(String(installmentTotal), 10);
-      if (!total || total < 2) {
-        return res.status(400).json({ error: 'Parcelamento requer um número de parcelas maior ou igual a 2.' });
-      }
-
-      const totalAmountNumber = Number(totalAmount);
-      if (!totalAmount || isNaN(totalAmountNumber) || totalAmountNumber <= 0) {
-        return res.status(400).json({ error: 'O valor total deve ser um número positivo.' });
-      }
+      const total: number = installmentTotal;
+      const totalAmountNumber: number = totalAmount;
 
       // Permite registrar uma compra parcelada que já está em andamento (ex:
       // parcelou antes de usar o app, já está na parcela 8 de 10): só gera
       // as parcelas a partir da informada, sem recriar as anteriores.
-      const startInstallment = startInstallmentNumber ? parseInt(String(startInstallmentNumber), 10) : 1;
-      if (!startInstallment || startInstallment < 1 || startInstallment > total) {
-        return res.status(400).json({ error: 'A parcela atual deve estar entre 1 e o total de parcelas.' });
-      }
+      const startInstallment: number = startInstallmentNumber;
 
       const installmentAmounts = splitAmount(totalAmountNumber, total);
       const installmentAmount = installmentAmounts[0];
@@ -121,10 +91,7 @@ export async function createRecurrence(req: Request, res: Response) {
     }
 
     // SUBSCRIPTION
-    const amountNumber = Number(amount);
-    if (!amount || isNaN(amountNumber) || amountNumber <= 0) {
-      return res.status(400).json({ error: 'O valor da assinatura deve ser um número positivo.' });
-    }
+    const amountNumber: number = amount;
 
     const recurrence = await prisma.recurrence.create({
       data: {
@@ -201,12 +168,12 @@ export async function updateRecurrence(req: Request, res: Response) {
       return res.status(400).json({ error: 'Somente assinaturas podem ser ativadas ou canceladas.' });
     }
 
-    const reactivating = Boolean(active) && !existing.active;
+    const reactivating = active && !existing.active;
 
     const updated = await prisma.recurrence.update({
       where: { id: String(id) },
       data: {
-        active: Boolean(active),
+        active,
         ...(reactivating
           ? {
               lastGeneratedPeriod: Math.max(

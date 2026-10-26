@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { parsePositiveAmount } from '../lib/amount.js';
 
 const DUPLICATE_NAME_ERROR = 'Já existe uma categoria com esse nome.';
 
@@ -19,19 +18,10 @@ async function nameInUse(userId: string, name: string, ignoreId?: string) {
 export async function createCategory(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { color, icon, budget } = req.body;
-    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const { name, color, icon, budget } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
-    }
-
-    if (!name) {
-      return res.status(400).json({ error: 'O nome é obrigatório.' });
-    }
-
-    if (budget && parsePositiveAmount(budget) === null) {
-      return res.status(400).json({ error: 'O orçamento deve ser um número positivo.' });
     }
 
     if (await nameInUse(userId, name)) {
@@ -43,7 +33,7 @@ export async function createCategory(req: Request, res: Response) {
         name,
         color: color || '#6B7280',
         icon: icon || 'MoreHorizRounded',
-        budget: budget ? Number(budget) : null,
+        budget: budget ?? null,
         userId,
       },
     });
@@ -81,15 +71,10 @@ export async function updateCategory(req: Request, res: Response) {
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const { color, icon, budget } = req.body;
-    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const { name, color, icon, budget } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
-    }
-
-    if (budget && parsePositiveAmount(budget) === null) {
-      return res.status(400).json({ error: 'O orçamento deve ser um número positivo.' });
     }
 
     const existingCategory = await prisma.category.findFirst({
@@ -115,7 +100,7 @@ export async function updateCategory(req: Request, res: Response) {
         ...(name ? { name } : {}),
         ...(color ? { color } : {}),
         ...(icon ? { icon } : {}),
-        ...(budget !== undefined ? { budget: budget ? Number(budget) : null } : {}),
+        ...(budget !== undefined ? { budget } : {}),
       },
     });
 
