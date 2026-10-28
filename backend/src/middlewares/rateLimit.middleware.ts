@@ -7,6 +7,8 @@ function clientIpKey(req: Request) {
   return ipKeyGenerator(ip);
 }
 
+const isTestEnvironment = () => process.env.NODE_ENV === 'test';
+
 export const loginRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -14,6 +16,7 @@ export const loginRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  skip: isTestEnvironment,
   message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
 });
 
@@ -23,6 +26,7 @@ export const registerRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  skip: isTestEnvironment,
   message: { error: 'Muitas contas criadas a partir deste acesso. Tente novamente mais tarde.' },
 });
 
@@ -32,6 +36,7 @@ export const passwordResetRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  skip: isTestEnvironment,
   message: { error: 'Muitos pedidos de redefinição de senha. Tente novamente mais tarde.' },
 });
 
@@ -42,5 +47,6 @@ export const resetPasswordRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  skip: isTestEnvironment,
   message: { error: 'Muitas tentativas. Tente novamente em 15 minutos.' },
 });

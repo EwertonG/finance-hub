@@ -28,7 +28,7 @@ Plataforma de gestão financeira pessoal para controle intuitivo de entradas, sa
 - JWT + bcryptjs para autenticação
 
 ### DevOps
-- GitHub Actions (lint, type-check e build automatizados a cada PR)
+- GitHub Actions (lint, type-check, build e testes automatizados a cada PR)
 
 
 ## Como rodar localmente
@@ -59,6 +59,24 @@ npm install
 cp .env.example .env   # configure a URL da API (ex: VITE_API_URL)
 npm run dev
 ```
+
+## Testes
+
+Os testes ficam em `backend/tests` e usam **Vitest** e **Supertest**:
+
+- `tests/unit`: funções isoladas (divisão de valores, datas, validações), sem banco.
+- `tests/integration`: a API completa contra um PostgreSQL de testes.
+
+Para rodar localmente (precisa do Docker):
+
+```bash
+cd backend
+npm run test:db     # sobe o banco de testes na porta 5433
+npm test            # roda todos os testes uma vez
+npm run test:watch  # roda de novo a cada arquivo salvo
+```
+
+Os testes apagam os dados do banco a cada caso e só aceitam rodar em um banco local (`localhost`), nunca no banco de produção. No GitHub, o CI roda os mesmos testes em todo push e pull request.
 
 ## 📄 Licença
 
