@@ -18,6 +18,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
+import { ServerWakeUpNotice } from '../../components/ServerWakeUpNotice';
 import logoImg from '../../assets/logo-horizontal.svg';
 import { PASSWORD_REGEX, PASSWORD_REQUIREMENTS_MESSAGE } from '../../constants/password';
 
@@ -108,6 +109,8 @@ export const Register: React.FC = () => {
           <Typography variant="body2" sx={{ color: '#64748B', mb: 3 }}>
             Comece a organizar suas finanças hoje mesmo.
           </Typography>
+
+          <ServerWakeUpNotice />
 
           {error && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
