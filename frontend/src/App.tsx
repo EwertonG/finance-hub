@@ -12,6 +12,7 @@ import { Register } from './pages/Auth/Register';
 import { ForgotPassword } from './pages/Auth/ForgotPassword';
 import { ResetPassword } from './pages/Auth/ResetPassword';
 import { MainLayout } from './layouts/MainLayout/index';
+import { ServerWakeUpNotice } from './components/ServerWakeUpNotice';
 import { PeriodProvider } from './contexts/PeriodContext';
 
 const Transactions = lazy(() => import('./pages/Transactions').then((m) => ({ default: m.Transactions })));
@@ -29,11 +30,30 @@ const RouteFallback: React.FC = () => (
 );
 
 
+const AppLoading: React.FC = () => (
+  <Box
+    sx={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+      px: 2,
+    }}
+  >
+    <CircularProgress size={32} />
+    <Box sx={{ maxWidth: 480, width: '100%' }}>
+      <ServerWakeUpNotice />
+    </Box>
+  </Box>
+);
+
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return null;
+    return <AppLoading />;
   }
 
   return isAuthenticated ? children : <Navigate to="/login" replace />;
