@@ -2,7 +2,7 @@
 
 Plataforma de gestão financeira pessoal para controle intuitivo de entradas, saídas, reservas, lançamentos por categoria e divisão de contas com devedores.
 
-🔗 **Demo:** [[finance-hub-ewerton4.vercel.app](https://finance-hub-ewerton4.vercel.app/login)](https://finance-hub-omega-green.vercel.app/)
+🔗 **Demo:** (https://finance-hub-omega-green.vercel.app/)
 
 ---
 
