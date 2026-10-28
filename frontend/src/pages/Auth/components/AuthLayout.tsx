@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Card, Typography } from '@mui/material';
 import { AuthSidePanel } from './AuthSidePanel';
+import { ServerWakeUpNotice } from '../../../components/ServerWakeUpNotice';
 import logoImg from '../../../assets/logo-horizontal.svg';
 
 interface AuthLayoutProps {
@@ -56,6 +57,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ title, subtitle, childre
         <Typography variant="body2" sx={{ color: '#64748B', mb: 3 }}>
           {subtitle}
         </Typography>
+
+        <ServerWakeUpNotice />
 
         {children}
       </Box>

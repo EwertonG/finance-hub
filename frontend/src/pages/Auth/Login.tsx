@@ -17,6 +17,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthSidePanel } from './components/AuthSidePanel';
+import { ServerWakeUpNotice } from '../../components/ServerWakeUpNotice';
 import logoImg from '../../assets/logo-horizontal.svg'
 
 export const Login: React.FC = () => {
@@ -98,6 +99,8 @@ export const Login: React.FC = () => {
           <Typography variant="body2" sx={{ color: '#64748B', mb: 3 }}>
             Plataforma de gestão financeira e controle de gastos.
           </Typography>
+
+          <ServerWakeUpNotice />
 
           {error && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
