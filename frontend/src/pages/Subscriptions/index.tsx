@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import PauseCircleOutlineRoundedIcon from '@mui/icons-material/PauseCircleOutlineRounded';
 import PlayCircleOutlineRoundedIcon from '@mui/icons-material/PlayCircleOutlineRounded';
 import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
@@ -47,6 +48,7 @@ export const Subscriptions: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { notify } = useNotification();
@@ -97,11 +99,28 @@ export const Subscriptions: React.FC = () => {
     });
   };
 
-  const handleSubscriptionSaved = (subscription: Subscription) => {
-    queryClient.setQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY, (prev = []) => [...prev, subscription]);
-    // Criar uma assinatura gera a transação do período corrente na hora.
+  const handleOpenCreate = () => {
+    setEditingSubscription(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (subscription: Subscription) => {
+    setEditingSubscription(subscription);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingSubscription(null);
+  };
+
+  const handleSubscriptionSaved = (subscription: Subscription, mode: 'created' | 'updated') => {
+    queryClient.setQueryData<Subscription[]>(SUBSCRIPTIONS_QUERY_KEY, (prev = []) =>
+      mode === 'updated' ? prev.map((s) => (s.id === subscription.id ? subscription : s)) : [...prev, subscription]
+    );
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    notify('Assinatura criada com sucesso!', 'success');
+    queryClient.invalidateQueries({ queryKey: ['recurrences'] });
+    notify(mode === 'updated' ? 'Assinatura atualizada!' : 'Assinatura criada com sucesso!', 'success');
   };
 
   return (
@@ -110,7 +129,7 @@ export const Subscriptions: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreate}
           sx={{ borderRadius: 2, px: 2.5, py: 1, textTransform: 'none', fontWeight: 600, boxShadow: 'none' }}
         >
           Nova Assinatura
@@ -171,7 +190,7 @@ export const Subscriptions: React.FC = () => {
                             variant="body2"
                             sx={{ fontWeight: 600, color: isIncome ? 'success.main' : 'error.main' }}
                           >
-                            {formatCurrency(subscription.amount)}
+                            {formatCurrency(Number(subscription.amount))}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -185,6 +204,11 @@ export const Subscriptions: React.FC = () => {
                         </TableCell>
                         <TableCell align="right">
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                            <Tooltip title="Editar">
+                              <IconButton size="small" onClick={() => handleOpenEdit(subscription)}>
+                                <EditRoundedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title={subscription.active ? 'Cancelar assinatura' : 'Reativar assinatura'}>
                               <IconButton size="small" onClick={() => handleToggleActive(subscription)}>
                                 {subscription.active ? (
@@ -213,8 +237,9 @@ export const Subscriptions: React.FC = () => {
 
       <SubscriptionModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         onSaved={handleSubscriptionSaved}
+        subscription={editingSubscription}
       />
 
       <ConfirmDialog
