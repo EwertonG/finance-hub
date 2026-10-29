@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions, subscriptionPeriod } from '../lib/recurrence.js';
+import { buildDateFilter } from '../lib/dateFilter.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 import { splitAmount } from '../lib/money.js';
 
@@ -149,7 +150,7 @@ export async function updateRecurrence(req: Request, res: Response) {
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const { active } = req.body;
+    const { active, description, amount, categoryId, paymentMethod, applyToCurrentMonth } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -165,24 +166,52 @@ export async function updateRecurrence(req: Request, res: Response) {
     }
 
     if (existing.kind !== 'SUBSCRIPTION') {
-      return res.status(400).json({ error: 'Somente assinaturas podem ser ativadas ou canceladas.' });
+      return res.status(400).json({ error: 'Somente assinaturas podem ser editadas, ativadas ou canceladas.' });
     }
 
-    const reactivating = active && !existing.active;
+    if (categoryId && !(await userOwnsCategory(userId, categoryId))) {
+      return res.status(400).json({ error: CATEGORY_NOT_OWNED_ERROR });
+    }
 
-    const updated = await prisma.recurrence.update({
-      where: { id: String(id) },
-      data: {
-        active,
-        ...(reactivating
-          ? {
-              lastGeneratedPeriod: Math.max(
-                existing.lastGeneratedPeriod,
-                subscriptionPeriod(existing.startDate) - 1
-              ),
-            }
-          : {}),
-      },
+    const chargeFields = {
+      ...(description !== undefined ? { description } : {}),
+      ...(amount !== undefined ? { amount } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
+      ...(paymentMethod !== undefined ? { paymentMethod } : {}),
+    };
+
+    const reactivating = active === true && !existing.active;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const recurrence = await tx.recurrence.update({
+        where: { id: existing.id },
+        data: {
+          ...chargeFields,
+          ...(active !== undefined ? { active } : {}),
+          ...(reactivating
+            ? {
+                lastGeneratedPeriod: Math.max(
+                  existing.lastGeneratedPeriod,
+                  subscriptionPeriod(existing.startDate) - 1
+                ),
+              }
+            : {}),
+        },
+        include: { category: { select: { id: true, name: true, color: true, icon: true } } },
+      });
+
+      if (applyToCurrentMonth && Object.keys(chargeFields).length > 0) {
+        const now = new Date();
+        await tx.transaction.updateMany({
+          where: {
+            recurrenceId: existing.id,
+            ...buildDateFilter(now.getUTCMonth() + 1, now.getUTCFullYear()),
+          },
+          data: chargeFields,
+        });
+      }
+
+      return recurrence;
     });
 
     if (reactivating) {
