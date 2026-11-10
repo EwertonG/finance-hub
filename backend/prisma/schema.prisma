@@ -49,8 +49,24 @@ model User {
   goals        Goal[]
   goalContributions GoalContribution[]
   passwordResetTokens PasswordResetToken[]
+  creditCard   CreditCard?
 
   @@map("users")
+}
+
+model CreditCard {
+  id         String   @id @default(uuid())
+  name       String   @default("Cartão de crédito")
+  closingDay Int      @map("closing_day")
+  dueDay     Int      @map("due_day")
+
+  userId     String   @unique @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("credit_cards")
 }
 
 model PasswordResetToken {
