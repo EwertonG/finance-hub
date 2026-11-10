@@ -52,9 +52,20 @@ export const createRecurrenceSchema = z
     }
   });
 
-export const updateRecurrenceSchema = z.object({
-  active: z.boolean({ error: 'Informe se a assinatura está ativa (true ou false).' }),
-});
+export const updateRecurrenceSchema = z
+  .object({
+    active: z.boolean({ error: 'Informe se a assinatura está ativa (true ou false).' }).optional(),
+    description: requiredText('A descrição', 200).optional(),
+    amount: positiveAmount('O valor da assinatura').optional(),
+    categoryId: optionalCategoryId,
+    paymentMethod: optionalPaymentMethod,
+    applyToCurrentMonth: z.boolean({ error: 'applyToCurrentMonth deve ser true ou false.' }).default(false),
+  })
+  .refine(
+    ({ active, description, amount, categoryId, paymentMethod }) =>
+      [active, description, amount, categoryId, paymentMethod].some((value) => value !== undefined),
+    { message: 'Informe o que deseja alterar na assinatura.' }
+  );
 
 export const recurrenceFiltersQuerySchema = z.object({
   kind: z.enum(['INSTALLMENT', 'SUBSCRIPTION'], { error: 'kind deve ser INSTALLMENT ou SUBSCRIPTION.' }).optional(),
