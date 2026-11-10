@@ -6,6 +6,7 @@ import { SummaryCards } from './components/SummaryCards';
 import { EvolutionChart } from './components/EvolutionChart';
 import { CommitmentsSummary } from './components/CommitmentsSummary';
 import { PaymentMethodSummary } from './components/PaymentMethodSummary';
+import { CreditCardInvoiceCard } from './components/CreditCardInvoiceCard';
 import { CategoryBudgetSection } from './components/CategoryBudgetSection';
 import { GoalsSection } from './components/GoalsSection';
 import { RecentTransactionsTable } from './components/RecentTransactionsTable';
@@ -48,6 +49,8 @@ export const Dashboard: React.FC = () => {
         subscriptionsLoading={subscriptionsLoading}
         subscriptions={subscriptions}
       />
+
+      {viewMode === 'monthly' && <CreditCardInvoiceCard month={month} year={year} />}
 
       <PaymentMethodSummary loading={paymentMethodLoading} amountByMethod={amountByMethod} />
 

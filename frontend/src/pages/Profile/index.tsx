@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useThemeMode } from '../../contexts/ThemeModeContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { PASSWORD_REGEX, PASSWORD_REQUIREMENTS_MESSAGE } from '../../constants/password';
+import { CreditCardSettings } from './components/CreditCardSettings';
 
 const formatDate = (dateString: string) => {
   const datePart = dateString.split('T')[0];
@@ -176,6 +177,8 @@ export const Profile: React.FC = () => {
           </Box>
         </CardContent>
       </Card>
+
+      <CreditCardSettings />
 
       {/* Preferências */}
       <Card sx={{ borderRadius: 3, boxShadow: 'none', border: `1px solid ${theme.palette.divider}` }}>
