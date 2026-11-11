@@ -41,6 +41,19 @@ describe('esqueci minha senha', () => {
     expect(oldSession.status).toBe(401);
   });
 
+  it('recusa a senha atual e mantém o link válido para nova tentativa', async () => {
+    const user = await createUser({ email: 'ana@teste.com' });
+    await api.post('/auth/forgot-password').send({ email: 'ana@teste.com' });
+    const token = lastResetToken();
+
+    const same = await api.post('/auth/reset-password').send({ token, password: user.password });
+    expect(same.status).toBe(400);
+    expect(same.body.error).toBe('A nova senha deve ser diferente da atual.');
+
+    const retry = await api.post('/auth/reset-password').send({ token, password: 'Nova@1234' });
+    expect(retry.status).toBe(204);
+  });
+
   it('responde igual para e-mail inexistente, sem enviar nada', async () => {
     await createUser({ email: 'ana@teste.com' });
 
