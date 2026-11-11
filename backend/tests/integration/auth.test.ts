@@ -4,14 +4,22 @@ import { api, resetDatabase, createUser } from '../helpers/api.js';
 beforeEach(resetDatabase);
 
 describe('cadastro e login', () => {
-  it('cria a conta com as 7 categorias padrão', async () => {
+  it('cria a conta com as 7 categorias padrão, sempre na mesma ordem', async () => {
     const user = await createUser();
-    const response = await api.get('/categories').set(user.auth);
 
-    expect(response.status).toBe(200);
-    expect(response.body.map((c: { name: string }) => c.name).sort()).toEqual(
-      ['Alimentação', 'Aluguel', 'Lazer', 'Outros', 'Salário', 'Saúde', 'Transporte'].sort()
-    );
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await api.get('/categories').set(user.auth);
+      expect(response.status).toBe(200);
+      expect(response.body.map((c: { name: string }) => c.name)).toEqual([
+        'Alimentação',
+        'Aluguel',
+        'Transporte',
+        'Lazer',
+        'Saúde',
+        'Salário',
+        'Outros',
+      ]);
+    }
   });
 
   it('não permite dois cadastros com o mesmo e-mail, mesmo mudando maiúsculas', async () => {

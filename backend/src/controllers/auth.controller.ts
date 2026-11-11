@@ -37,7 +37,11 @@ export async function register(req: Request, res: Response) {
     });
 
     await prisma.category.createMany({
-      data: DEFAULT_CATEGORIES.map((category) => ({ ...category, userId: user.id })),
+      data: DEFAULT_CATEGORIES.map((category, index) => ({
+        ...category,
+        userId: user.id,
+        createdAt: new Date(user.createdAt.getTime() + index),
+      })),
     });
 
     const token = generateToken({ userId: user.id, tokenVersion: 0 });
