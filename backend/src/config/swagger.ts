@@ -129,6 +129,55 @@ export const swaggerDocument = {
       },
     },
 
+    // Cartão de crédito
+    '/credit-card': {
+      get: {
+        tags: ['Cartão de crédito'],
+        summary: 'Obter o cartão configurado (ou null)',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: { description: 'Cartão ou null' } },
+      },
+      put: {
+        tags: ['Cartão de crédito'],
+        summary: 'Cadastrar ou atualizar os dias de fechamento e vencimento',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['closingDay', 'dueDay'],
+                properties: {
+                  closingDay: { type: 'integer', example: 5 },
+                  dueDay: { type: 'integer', example: 12 },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'Cartão salvo' } },
+      },
+      delete: {
+        tags: ['Cartão de crédito'],
+        summary: 'Remover a configuração do cartão',
+        security: [{ bearerAuth: [] }],
+        responses: { 204: { description: 'Cartão removido' } },
+      },
+    },
+    '/credit-card/invoice': {
+      get: {
+        tags: ['Cartão de crédito'],
+        summary: 'Fatura que vence no mês informado',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'month', in: 'query', required: true, schema: { type: 'integer' } },
+          { name: 'year', in: 'query', required: true, schema: { type: 'integer' } },
+        ],
+        responses: { 200: { description: 'Fatura com total, datas e compras' } },
+      },
+    },
+
     // Categorias
     '/categories': {
       post: {

@@ -11,6 +11,7 @@ import { transactionRoutes } from './routes/transaction.routes.js';
 import { debtorRoutes } from './routes/debtor.routes.js';
 import { recurrenceRoutes } from './routes/recurrence.routes.js';
 import { goalRoutes } from './routes/goal.routes.js';
+import { creditCardRoutes } from './routes/creditCard.routes.js';
 import { allowedOrigins } from './config/origins.js';
 
 const app = express();
@@ -38,5 +39,6 @@ app.use('/transactions', transactionRoutes);
 app.use('/debtors', debtorRoutes);
 app.use('/recurrences', recurrenceRoutes);
 app.use('/goals', goalRoutes);
+app.use('/credit-card', creditCardRoutes);
 
 export { app, apiDocsEnabled };

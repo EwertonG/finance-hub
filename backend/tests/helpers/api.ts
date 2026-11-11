@@ -9,6 +9,7 @@ export async function resetDatabase() {
   assertLocalDatabase(process.env.DATABASE_URL ?? '');
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
+      "credit_cards",
       "password_reset_tokens",
       "goal_contributions",
       "goals",
