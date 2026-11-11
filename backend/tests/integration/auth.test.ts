@@ -74,6 +74,18 @@ describe('troca de senha', () => {
     expect(newToken.status).toBe(200);
   });
 
+  it('recusa a nova senha igual à atual', async () => {
+    const user = await createUser();
+    const response = await api
+      .put('/auth/me/password')
+      .set(user.auth)
+      .send({ currentPassword: user.password, newPassword: user.password });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('A nova senha deve ser diferente da atual.');
+    expect((await api.get('/auth/me').set(user.auth)).status).toBe(200);
+  });
+
   it('exige a senha atual correta', async () => {
     const user = await createUser();
     const response = await api

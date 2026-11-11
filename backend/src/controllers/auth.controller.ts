@@ -181,6 +181,10 @@ export async function changePassword(req: Request, res: Response) {
       return res.status(400).json({ error: 'Senha atual incorreta.' });
     }
 
+    if (await comparePassword(newPassword, user.passwordHash)) {
+      return res.status(400).json({ error: SAME_PASSWORD_MESSAGE });
+    }
+
     const passwordHash = await hashPassword(newPassword);
     const updated = await prisma.user.update({
       where: { id: userId },
@@ -196,6 +200,7 @@ export async function changePassword(req: Request, res: Response) {
 }
 
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+const SAME_PASSWORD_MESSAGE = 'A nova senha deve ser diferente da atual.';
 const FORGOT_PASSWORD_MESSAGE =
   'Se este e-mail estiver cadastrado, você receberá um link para redefinir a senha.';
 const INVALID_RESET_LINK_MESSAGE = 'Link inválido ou expirado. Solicite um novo.';
@@ -286,6 +291,14 @@ export async function resetPassword(req: Request, res: Response) {
 
     if (!record || record.usedAt || record.expiresAt < new Date()) {
       return res.status(400).json({ error: INVALID_RESET_LINK_MESSAGE });
+    }
+
+    const owner = await prisma.user.findUnique({
+      where: { id: record.userId },
+      select: { passwordHash: true },
+    });
+    if (owner && (await comparePassword(password, owner.passwordHash))) {
+      return res.status(400).json({ error: SAME_PASSWORD_MESSAGE });
     }
 
     const passwordHash = await hashPassword(password);
