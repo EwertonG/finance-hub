@@ -45,6 +45,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import { getCategoryIconComponent } from '../../constants/categoryIcons';
 import { useCategories } from '../../hooks/useCategories';
+import { buildBudgetAlertMessage, type BudgetAlert } from '../../utils/budgetAlert';
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS, type PaymentMethod } from '../../constants/paymentMethods';
 
 interface Transaction {
@@ -213,12 +214,13 @@ export const Transactions: React.FC = () => {
 
   const handleSaveTransaction = async (data: NewTransactionData) => {
     try {
+      let response;
       if (editingTransaction) {
-        await api.put(`/transactions/${editingTransaction.id}`, data);
+        response = await api.put(`/transactions/${editingTransaction.id}`, data);
       } else if (data.installmentTotal && data.installmentTotal >= 2) {
         // Parcelamento cria uma Recurrence + todas as parcelas de uma vez,
         // não um lançamento único.
-        await api.post('/recurrences', {
+        response = await api.post('/recurrences', {
           description: data.description,
           totalAmount: data.amount,
           type: data.type,
@@ -230,14 +232,20 @@ export const Transactions: React.FC = () => {
           paymentMethod: data.paymentMethod,
         });
       } else {
-        await api.post('/transactions', data);
+        response = await api.post('/transactions', data);
       }
       // Invalida em vez de mexer no array local: o lançamento só deve
       // aparecer na lista se cair dentro do período/filtros selecionados, e
       // outras páginas (Dashboard) que dependem de transações também precisam
       // saber que os dados mudaram.
       await queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      notify(editingTransaction ? 'Lançamento atualizado com sucesso!' : 'Lançamento adicionado com sucesso!', 'success');
+      const savedMessage = editingTransaction ? 'Lançamento atualizado.' : 'Lançamento adicionado.';
+      const budgetAlert: BudgetAlert | null = response.data?.budgetAlert ?? null;
+      if (budgetAlert) {
+        notify(`${savedMessage} ${buildBudgetAlertMessage(budgetAlert)}`, 'warning', { duration: 8000 });
+      } else {
+        notify(editingTransaction ? 'Lançamento atualizado com sucesso!' : 'Lançamento adicionado com sucesso!', 'success');
+      }
     } catch (error) {
       console.error('Erro ao salvar lançamento:', error);
       notify(editingTransaction ? 'Erro ao atualizar lançamento. Tente novamente.' : 'Erro ao criar lançamento. Tente novamente.', 'error');
