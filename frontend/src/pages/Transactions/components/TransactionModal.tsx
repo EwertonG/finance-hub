@@ -27,7 +27,7 @@ export interface NewTransactionData {
   date: string;
   installmentTotal?: number;
   startInstallmentNumber?: number;
-  paymentMethod?: PaymentMethod;
+  paymentMethod: PaymentMethod | null;
 }
 
 export interface EditableTransaction {
@@ -115,7 +115,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ open, onClos
       ...(shouldSplitInInstallments
         ? { installmentTotal: Number(installmentTotal), startInstallmentNumber: Number(startInstallmentNumber) || 1 }
         : {}),
-      ...(paymentMethod ? { paymentMethod } : {}),
+      paymentMethod: paymentMethod || null,
     });
 
     onClose();

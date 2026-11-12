@@ -70,6 +70,27 @@ describe('lançamentos', () => {
   });
 });
 
+describe('edição de lançamento', () => {
+  it('permite remover a forma de pagamento', async () => {
+    const user = await createUser();
+    const created = await api.post('/transactions').set(user.auth).send({ description: 'Mercado', amount: 10, type: 'EXPENSE', date: '2026-10-10', paymentMethod: 'PIX' });
+
+    const edited = await api.put(`/transactions/${created.body.id}`).set(user.auth).send({ description: 'Mercado', amount: 10, type: 'EXPENSE', date: '2026-10-10', paymentMethod: null });
+
+    expect(edited.status).toBe(200);
+    expect(edited.body.paymentMethod).toBeNull();
+  });
+
+  it('não mexe na forma de pagamento quando o campo não é enviado', async () => {
+    const user = await createUser();
+    const created = await api.post('/transactions').set(user.auth).send({ description: 'Mercado', amount: 10, type: 'EXPENSE', date: '2026-10-10', paymentMethod: 'PIX' });
+
+    const edited = await api.put(`/transactions/${created.body.id}`).set(user.auth).send({ amount: 15 });
+
+    expect(edited.body.paymentMethod).toBe('PIX');
+  });
+});
+
 describe('isolamento entre usuários', () => {
   it('um usuário não vê nem altera lançamentos de outro', async () => {
     const ana = await createUser();

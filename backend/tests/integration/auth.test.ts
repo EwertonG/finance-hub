@@ -4,14 +4,22 @@ import { api, resetDatabase, createUser } from '../helpers/api.js';
 beforeEach(resetDatabase);
 
 describe('cadastro e login', () => {
-  it('cria a conta com as 7 categorias padrão', async () => {
+  it('cria a conta com as 7 categorias padrão, sempre na mesma ordem', async () => {
     const user = await createUser();
-    const response = await api.get('/categories').set(user.auth);
 
-    expect(response.status).toBe(200);
-    expect(response.body.map((c: { name: string }) => c.name).sort()).toEqual(
-      ['Alimentação', 'Aluguel', 'Lazer', 'Outros', 'Salário', 'Saúde', 'Transporte'].sort()
-    );
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await api.get('/categories').set(user.auth);
+      expect(response.status).toBe(200);
+      expect(response.body.map((c: { name: string }) => c.name)).toEqual([
+        'Alimentação',
+        'Aluguel',
+        'Transporte',
+        'Lazer',
+        'Saúde',
+        'Salário',
+        'Outros',
+      ]);
+    }
   });
 
   it('não permite dois cadastros com o mesmo e-mail, mesmo mudando maiúsculas', async () => {
@@ -64,6 +72,18 @@ describe('troca de senha', () => {
     expect(oldToken.status).toBe(401);
     expect(otherToken.status).toBe(401);
     expect(newToken.status).toBe(200);
+  });
+
+  it('recusa a nova senha igual à atual', async () => {
+    const user = await createUser();
+    const response = await api
+      .put('/auth/me/password')
+      .set(user.auth)
+      .send({ currentPassword: user.password, newPassword: user.password });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('A nova senha deve ser diferente da atual.');
+    expect((await api.get('/auth/me').set(user.auth)).status).toBe(200);
   });
 
   it('exige a senha atual correta', async () => {
