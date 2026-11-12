@@ -4,6 +4,7 @@ import { ensureSubscriptionTransactions, subscriptionPeriod } from '../lib/recur
 import { buildDateFilter } from '../lib/dateFilter.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 import { splitAmount } from '../lib/money.js';
+import { checkBudgetCrossing } from '../lib/budget.js';
 
 export async function createRecurrence(req: Request, res: Response) {
   try {
@@ -88,7 +89,12 @@ export async function createRecurrence(req: Request, res: Response) {
         return created;
       });
 
-      return res.status(201).json(recurrence);
+      const budgetAlert =
+        type === 'EXPENSE'
+          ? await checkBudgetCrossing(userId, categoryId, start, installmentAmounts[startInstallment - 1])
+          : null;
+
+      return res.status(201).json({ ...recurrence, budgetAlert });
     }
 
     // SUBSCRIPTION
