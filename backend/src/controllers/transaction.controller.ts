@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
+import { checkBudgetCrossing, isSameUtcMonth } from '../lib/budget.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
 
@@ -50,7 +51,10 @@ export async function createTransaction(req: Request, res: Response) {
       },
     });
 
-    return res.status(201).json(transaction);
+    const budgetAlert =
+      type === 'EXPENSE' ? await checkBudgetCrossing(userId, transaction.categoryId, transaction.date, amount) : null;
+
+    return res.status(201).json({ ...transaction, budgetAlert });
   } catch (error) {
     console.error('Erro ao criar transação:', error);
     return res.status(500).json({ error: 'Erro interno ao criar lançamento.' });
@@ -268,7 +272,23 @@ export async function updateTransaction(req: Request, res: Response) {
       },
     });
 
-    return res.json(updatedTransaction);
+    const previouslyCounted =
+      existingTransaction.type === 'EXPENSE' &&
+      existingTransaction.categoryId === updatedTransaction.categoryId &&
+      isSameUtcMonth(existingTransaction.date, updatedTransaction.date)
+        ? Number(existingTransaction.amount)
+        : 0;
+    const budgetAlert =
+      updatedTransaction.type === 'EXPENSE'
+        ? await checkBudgetCrossing(
+            userId,
+            updatedTransaction.categoryId,
+            updatedTransaction.date,
+            Number(updatedTransaction.amount) - previouslyCounted
+          )
+        : null;
+
+    return res.json({ ...updatedTransaction, budgetAlert });
   } catch (error) {
     console.error('Erro ao atualizar transação:', error);
     return res.status(500).json({ error: 'Erro interno ao atualizar transação.' });
