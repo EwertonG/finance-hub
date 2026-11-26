@@ -7,6 +7,7 @@ import { EvolutionChart } from './components/EvolutionChart';
 import { CommitmentsSummary } from './components/CommitmentsSummary';
 import { PaymentMethodSummary } from './components/PaymentMethodSummary';
 import { CreditCardInvoiceCard } from './components/CreditCardInvoiceCard';
+import { BudgetAlertBanner } from './components/BudgetAlertBanner';
 import { CategoryBudgetSection } from './components/CategoryBudgetSection';
 import { GoalsSection } from './components/GoalsSection';
 import { RecentTransactionsTable } from './components/RecentTransactionsTable';
@@ -39,6 +40,8 @@ export const Dashboard: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {viewMode === 'monthly' && !budgetLoading && <BudgetAlertBanner items={budgetProgress} />}
+
       <SummaryCards loading={loading} summary={summary} previousSummary={previousSummary} periodLabel={periodLabel} />
 
       <EvolutionChart loading={loading} year={year} data={evolutionData} />

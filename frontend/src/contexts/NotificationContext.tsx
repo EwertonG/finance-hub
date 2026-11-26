@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Snackbar, Alert, Button } from '@mui/material';
 
-type Severity = 'success' | 'error';
+type Severity = 'success' | 'error' | 'warning' | 'info';
 
 interface NotifyOptions {
   actionLabel?: string;
