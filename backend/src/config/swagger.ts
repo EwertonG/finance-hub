@@ -264,6 +264,26 @@ export const swaggerDocument = {
         ],
         responses: { 200: { description: 'Lista de transações' } },
       },
+    },    
+    '/transactions/export': {
+      get: {
+        tags: ['Transações'],
+        summary: 'Exportar lançamentos em CSV',
+        description:
+          'Aceita os mesmos filtros da listagem (a paginação é ignorada). O arquivo usa ";" como separador, vírgula decimal e BOM UTF-8 para abrir direto no Excel. Limite de 20.000 linhas.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'month', in: 'query', schema: { type: 'integer' } },
+          { name: 'year', in: 'query', schema: { type: 'integer' } },
+          { name: 'type', in: 'query', schema: { type: 'string', enum: ['INCOME', 'EXPENSE'] } },
+          { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+          { name: 'paymentMethod', in: 'query', schema: { type: 'string', example: 'DEBIT_CARD,PIX' } },
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Arquivo CSV', content: { 'text/csv': { schema: { type: 'string' } } } },
+        },
+      },
     },
     '/transactions/summary': {
       get: {

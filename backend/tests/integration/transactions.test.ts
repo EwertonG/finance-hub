@@ -115,3 +115,57 @@ describe('isolamento entre usuários', () => {
     expect(response.status).toBe(400);
   });
 });
+
+describe('exportação em CSV', () => {
+  it('exporta apenas os lançamentos do filtro, com cabeçalhos de download', async () => {
+    const user = await createUser();
+    const food = await findCategoryId(user, 'Alimentação');
+
+    await api.post('/transactions').set(user.auth).send({ description: 'Salário', amount: 5000, type: 'INCOME', date: '2026-10-05' });
+    await api.post('/transactions').set(user.auth).send({ description: 'Mercado', amount: 350.5, type: 'EXPENSE', date: '2026-10-10', categoryId: food, paymentMethod: 'PIX' });
+    await api.post('/transactions').set(user.auth).send({ description: 'Outro mês', amount: 100, type: 'EXPENSE', date: '2026-09-30' });
+
+    const response = await api.get('/transactions/export?month=10&year=2026&type=EXPENSE').set(user.auth);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toContain('attachment');
+
+    const lines = response.text.replace('\uFEFF', '').trim().split('\r\n');
+    expect(lines).toEqual([
+      'Data;Descrição;Tipo;Categoria;Forma de pagamento;Parcela;Valor (R$)',
+      '10/10/2026;Mercado;Despesa;Alimentação;Pix;;350,50',
+    ]);
+  });
+
+  it('ignora a paginação e exporta todos os lançamentos do período', async () => {
+    const user = await createUser();
+    for (let day = 1; day <= 3; day += 1) {
+      await api.post('/transactions').set(user.auth).send({ description: `Item ${day}`, amount: 10, type: 'EXPENSE', date: `2026-10-0${day}` });
+    }
+
+    const response = await api.get('/transactions/export?year=2026&page=1&limit=1').set(user.auth);
+    const lines = response.text.trim().split('\r\n');
+    expect(lines).toHaveLength(4);
+  });
+
+  it('não exporta lançamentos de outro usuário e exige autenticação', async () => {
+    const ana = await createUser();
+    const bia = await createUser();
+    await api.post('/transactions').set(ana.auth).send({ description: 'Da Ana', amount: 10, type: 'EXPENSE', date: '2026-10-10' });
+
+    const biaExport = await api.get('/transactions/export?year=2026').set(bia.auth);
+    expect(biaExport.text).not.toContain('Da Ana');
+
+    const anonymous = await api.get('/transactions/export?year=2026');
+    expect(anonymous.status).toBe(401);
+  });
+
+  it('protege contra fórmulas na descrição', async () => {
+    const user = await createUser();
+    await api.post('/transactions').set(user.auth).send({ description: '=HYPERLINK("http://x")', amount: 10, type: 'EXPENSE', date: '2026-10-10' });
+
+    const response = await api.get('/transactions/export?year=2026').set(user.auth);
+    expect(response.text).toContain(`"'=HYPERLINK(""http://x"")"`);
+  });
+});

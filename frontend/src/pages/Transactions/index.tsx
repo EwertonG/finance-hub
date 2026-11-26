@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
+import { buildExportFilename, downloadTransactionsCsv } from './exportCsv';
 import {
   Box,
   Button,
@@ -92,6 +94,8 @@ export const Transactions: React.FC = () => {
   const [page, setPage] = useState(1);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const [isExporting, setIsExporting] = useState(false);
 
   const { notify } = useNotification();
 
@@ -199,6 +203,21 @@ export const Transactions: React.FC = () => {
     const date = parsed.toLocaleDateString('pt-BR');
     const time = parsed.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     return `${date} às ${time}`;
+  };
+
+  // Exporta tudo que bate com os filtros ativos (não só a página atual).
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const filename = buildExportFilename(year, viewMode === 'monthly' ? month : undefined);
+      await downloadTransactionsCsv(filterParams, filename);
+      notify('Exportação concluída!', 'success');
+    } catch (error) {
+      console.error('Erro ao exportar lançamentos:', error);
+      notify('Erro ao exportar lançamentos. Tente novamente.', 'error');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleOpenCreateModal = () => {
@@ -333,28 +352,45 @@ export const Transactions: React.FC = () => {
             </Select>
           </FormControl>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={handleOpenCreateModal}
-            sx={{
-              borderRadius: 2,
-              px: 2.5,
-              py: 1,
-              textTransform: 'none',
-              fontWeight: 600,
-              boxShadow: 'none',
-            }}
-          >
-            Novo Lançamento
-          </Button>
-          {lastAddedAt && (
-            <Typography variant="caption" color="text.secondary">
-              Atualizado em {formatDateTime(lastAddedAt)}
-            </Typography>
-          )}
-        </Box>
+<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+    <Button
+      variant="outlined"
+      startIcon={<FileDownloadRoundedIcon />}
+      onClick={handleExportCsv}
+      disabled={isExporting || transactions.length === 0}
+      sx={{
+        borderRadius: 2,
+        px: 2.5,
+        py: 1,
+        textTransform: 'none',
+        fontWeight: 600,
+      }}
+    >
+      {isExporting ? 'Exportando...' : 'Exportar CSV'}
+    </Button>
+    <Button
+      variant="contained"
+      startIcon={<AddRoundedIcon />}
+      onClick={handleOpenCreateModal}
+      sx={{
+        borderRadius: 2,
+        px: 2.5,
+        py: 1,
+        textTransform: 'none',
+        fontWeight: 600,
+        boxShadow: 'none',
+      }}
+    >
+      Novo Lançamento
+    </Button>
+  </Box>
+  {lastAddedAt && (
+    <Typography variant="caption" color="text.secondary">
+      Atualizado em {formatDateTime(lastAddedAt)}
+    </Typography>
+  )}
+</Box>
       </Box>
 
       {/* Resumo respeitando os filtros ativos acima. */}

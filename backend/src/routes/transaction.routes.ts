@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createTransaction,
   listTransactions,
+  exportTransactions,
   getTransactionSummary,
   getAnnualSummary,
   getCategoryBreakdown,
@@ -35,5 +36,6 @@ transactionRoutes.get('/first-date', getFirstTransactionDate);
 transactionRoutes.get('/last-added', getLastAddedTransaction);
 transactionRoutes.put('/:id', validate({ body: updateTransactionSchema }), updateTransaction);
 transactionRoutes.delete('/:id', deleteTransaction);
+transactionRoutes.get('/export', validate({ query: transactionFiltersQuerySchema }), exportTransactions);
 
 export { transactionRoutes };
