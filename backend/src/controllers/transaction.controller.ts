@@ -5,6 +5,7 @@ import { ensureSubscriptionTransactions } from '../lib/recurrence.js';
 import { buildDateFilter } from '../lib/dateFilter.js';
 import { userOwnsCategory, CATEGORY_NOT_OWNED_ERROR } from '../lib/category.js';
 import { checkBudgetCrossing, isSameUtcMonth } from '../lib/budget.js';
+import { buildTransactionsCsv } from '../lib/csv.js';
 
 const PAYMENT_METHODS = ['PIX', 'CREDIT_CARD', 'DEBIT_CARD', 'CASH'];
 
@@ -21,6 +22,22 @@ function parsePaymentMethodFilter(paymentMethod: unknown) {
 function buildSearchFilter(search: unknown) {
   const term = typeof search === 'string' ? search.trim() : '';
   return term ? { description: { contains: term, mode: 'insensitive' as const } } : {};
+}
+
+// Filtros compartilhados pela listagem e pela exportação: a planilha exportada
+// deve conter exatamente o que a tela de Lançamentos mostra com os mesmos filtros.
+function buildTransactionFilters(userId: string, query: Request['query']) {
+  const { month, year, type, categoryId, paymentMethod, search } = query;
+  const paymentMethods = parsePaymentMethodFilter(paymentMethod);
+
+  return {
+    userId,
+    ...buildDateFilter(month, year),
+    ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
+    ...(categoryId ? { categoryId: String(categoryId) } : {}),
+    ...(paymentMethods ? { paymentMethod: { in: paymentMethods as ('PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH')[] } } : {}),
+    ...buildSearchFilter(search),
+  };
 }
 
 export async function createTransaction(req: Request, res: Response) {
@@ -64,7 +81,7 @@ export async function createTransaction(req: Request, res: Response) {
 export async function listTransactions(req: Request, res: Response) {
   try {
     const userId = req.userId;
-    const { month, year, type, categoryId, paymentMethod, search, page, limit } = req.query;
+    const {page, limit } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -72,16 +89,7 @@ export async function listTransactions(req: Request, res: Response) {
 
     await ensureSubscriptionTransactions(userId);
 
-    const paymentMethods = parsePaymentMethodFilter(paymentMethod);
-
-    const where = {
-      userId,
-      ...buildDateFilter(month, year),
-      ...(type && (type === 'INCOME' || type === 'EXPENSE') ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
-      ...(categoryId ? { categoryId: String(categoryId) } : {}),
-      ...(paymentMethods ? { paymentMethod: { in: paymentMethods as ('PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH')[] } } : {}),
-      ...buildSearchFilter(search),
-    };
+    const where = buildTransactionFilters(userId, req.query);
 
     // "limit" ausente = sem paginação (usado pelo Dashboard, que precisa do
     // conjunto inteiro para os gráficos).
@@ -111,6 +119,38 @@ export async function listTransactions(req: Request, res: Response) {
   } catch (error) {
     console.error('Erro ao listar transações:', error);
     return res.status(500).json({ error: 'Erro interno ao listar lançamentos.' });
+  }
+}
+
+// Teto de segurança: evita montar um CSV gigante em memória numa única requisição.
+const MAX_EXPORT_ROWS = 20000;
+
+export async function exportTransactions(req: Request, res: Response) {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuário não autenticado.' });
+    }
+
+    await ensureSubscriptionTransactions(userId);
+
+    const transactions = await prisma.transaction.findMany({
+      where: buildTransactionFilters(userId, req.query),
+      include: {
+        category: { select: { name: true } },
+        recurrence: { select: { installmentTotal: true } },
+      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      take: MAX_EXPORT_ROWS,
+    });
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="lancamentos.csv"');
+    return res.send(buildTransactionsCsv(transactions));
+  } catch (error) {
+    console.error('Erro ao exportar transações:', error);
+    return res.status(500).json({ error: 'Erro interno ao exportar lançamentos.' });
   }
 }
 
